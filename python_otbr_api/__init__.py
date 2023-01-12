@@ -20,13 +20,6 @@ class OTBR:  # pylint: disable=too-few-public-methods
         self._url = url
         self._timeout = timeout
 
-    def _raise_for_status(self, response: aiohttp.ClientResponse) -> None:
-        """Raise if status >= 400."""
-        try:
-            response.raise_for_status()
-        except aiohttp.ClientResponseError as exc:
-            raise OTBRError(f"unexpected http status {response.status}") from exc
-
     async def get_active_dataset_tlvs(self) -> bytes | None:
         """Get current active operational dataset in TLVS format, or None.
 
@@ -36,10 +29,10 @@ class OTBR:  # pylint: disable=too-few-public-methods
         response = await self._session.get(
             f"{self._url}/node/dataset/active",
             headers={"Accept": "text/plain"},
+            raise_for_status=True,
             timeout=aiohttp.ClientTimeout(total=self._timeout),
         )
 
-        self._raise_for_status(response)
         if response.status == HTTPStatus.NO_CONTENT:
             return None
 
@@ -47,7 +40,6 @@ class OTBR:  # pylint: disable=too-few-public-methods
             raise OTBRError(f"unexpected http status {response.status}")
 
         try:
-            tmp = await response.read()
-            return bytes.fromhex(tmp.decode("ASCII"))
+            return bytes.fromhex(await response.text("ASCII"))
         except ValueError as exc:
             raise OTBRError("unexpected API response") from exc
