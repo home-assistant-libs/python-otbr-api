@@ -9,7 +9,7 @@ class OTBRError(Exception):
     """Raised on error."""
 
 
-class OTBR:
+class OTBR:  # pylint: disable=too-few-public-methods
     """Class to interact with the Open Thread Border Router REST API."""
 
     def __init__(
