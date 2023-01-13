@@ -1,0 +1,19 @@
+.DS_Store
+.idea
+*.log
+tmp/
+
+*.py[cod]
+*.egg
+htmlcov
+
+.projectile
+.venv/
+venv/
+.mypy_cache/
+*.egg-info/
+
+# Visual Studio Code
+.vscode/*
+
+dist
