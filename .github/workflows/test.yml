@@ -26,14 +26,14 @@ jobs:
           pip install -r requirements-test.txt
       - name: Lint with flake8
         run: |
-          flake8 python-otbr-api
+          flake8 python_otbr_api
       - name: Check formatting with black
         run: |
-          black python-otbr-api --check --diff
+          black python_otbr_api --check --diff
       - name: Lint with mypy
         run: |
-          mypy python-otbr-api
+          mypy python_otbr_api
       - name: Lint with pylint
         run: |
-          pylint python-otbr-api
+          pylint python_otbr_api
 
