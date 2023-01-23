@@ -23,3 +23,6 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["python_otbr_api*"]
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
