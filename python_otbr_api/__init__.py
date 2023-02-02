@@ -4,10 +4,14 @@ from http import HTTPStatus
 
 import aiohttp
 
+from .models import OperationalDataSet, ThreadState
+
 
 class OTBRError(Exception):
     """Raised on error."""
 
+class ThreadNetworkActiveError(OTBRError):
+    """Raised on attempts to modify the active dataset when thread network is active."""
 
 class OTBR:  # pylint: disable=too-few-public-methods
     """Class to interact with the Open Thread Border Router REST API."""
@@ -19,6 +23,39 @@ class OTBR:  # pylint: disable=too-few-public-methods
         self._session = session
         self._url = url
         self._timeout = timeout
+
+    async def async_set_enabled(self, enabled: bool) -> None:
+        """Enable or disable the router."""
+
+        response = await self._session.post(
+            f"{self._url}/node/state",
+            json='"enabled"' if enabled else '"disabled"',
+            raise_for_status=True,
+            timeout=aiohttp.ClientTimeout(total=10),
+        )
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+    async def async_create_active_dataset(
+        self, dataset: OperationalDataSet
+    ) -> None:
+        """Create active operational dataset.
+        The passed in OperationalDataSet does not need to be fully populated, any fields
+        not set will be automatically set by the open thread border router.
+        Raises if the http status is 400 or higher or if the response is invalid.
+        """
+
+        response = await self._session.post(
+            f"{self._url}/node/dataset/active",
+            json=dataset.as_json(),
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status == HTTPStatus.CONFLICT:
+            raise ThreadNetworkActiveError
+        if response.status != HTTPStatus.ACCEPTED:
+            raise OTBRError(f"unexpected http status {response.status}")
 
     async def get_active_dataset_tlvs(self) -> bytes | None:
         """Get current active operational dataset in TLVS format, or None.
