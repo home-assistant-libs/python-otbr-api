@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-import voluptuous as vol
+import voluptuous as vol  # type:ignore[import]
 
 
 @dataclass
