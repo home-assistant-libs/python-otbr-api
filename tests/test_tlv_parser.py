@@ -5,7 +5,7 @@ import pytest
 from python_otbr_api.tlv_parser import MeshcopTLVType, TLVError, parse_tlv
 
 
-async def test_parse_tlv() -> None:
+def test_parse_tlv() -> None:
     """Test the TLV parser."""
     dataset_tlv = (
         "0E080000000000010000000300000F35060004001FFFE0020811111111222222220708FDAD70BF"
@@ -52,7 +52,7 @@ async def test_parse_tlv() -> None:
         ),
     ),
 )
-async def test_parse_tlv_error(tlv, error, msg) -> None:
+def test_parse_tlv_error(tlv, error, msg) -> None:
     """Test the TLV parser error handling."""
     with pytest.raises(error, match=msg):
         parse_tlv(tlv)
