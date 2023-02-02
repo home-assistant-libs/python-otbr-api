@@ -4,14 +4,16 @@ from http import HTTPStatus
 
 import aiohttp
 
-from .models import OperationalDataSet, ThreadState
+from .models import OperationalDataSet
 
 
 class OTBRError(Exception):
     """Raised on error."""
 
+
 class ThreadNetworkActiveError(OTBRError):
     """Raised on attempts to modify the active dataset when thread network is active."""
+
 
 class OTBR:  # pylint: disable=too-few-public-methods
     """Class to interact with the Open Thread Border Router REST API."""
@@ -24,23 +26,44 @@ class OTBR:  # pylint: disable=too-few-public-methods
         self._url = url
         self._timeout = timeout
 
-    async def async_set_enabled(self, enabled: bool) -> None:
+    async def set_enabled(self, enabled: bool) -> None:
         """Enable or disable the router."""
 
         response = await self._session.post(
             f"{self._url}/node/state",
             json='"enabled"' if enabled else '"disabled"',
-            raise_for_status=True,
             timeout=aiohttp.ClientTimeout(total=10),
         )
 
         if response.status != HTTPStatus.OK:
             raise OTBRError(f"unexpected http status {response.status}")
 
-    async def async_create_active_dataset(
-        self, dataset: OperationalDataSet
-    ) -> None:
+    async def get_active_dataset_tlvs(self) -> bytes | None:
+        """Get current active operational dataset in TLVS format, or None.
+
+        Returns None if there is no active operational dataset.
+        Raises if the http status is 400 or higher or if the response is invalid.
+        """
+        response = await self._session.get(
+            f"{self._url}/node/dataset/active",
+            headers={"Accept": "text/plain"},
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status == HTTPStatus.NO_CONTENT:
+            return None
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+        try:
+            return bytes.fromhex(await response.text("ASCII"))
+        except ValueError as exc:
+            raise OTBRError("unexpected API response") from exc
+
+    async def create_active_dataset(self, dataset: OperationalDataSet) -> None:
         """Create active operational dataset.
+
         The passed in OperationalDataSet does not need to be fully populated, any fields
         not set will be automatically set by the open thread border router.
         Raises if the http status is 400 or higher or if the response is invalid.
@@ -57,26 +80,22 @@ class OTBR:  # pylint: disable=too-few-public-methods
         if response.status != HTTPStatus.ACCEPTED:
             raise OTBRError(f"unexpected http status {response.status}")
 
-    async def get_active_dataset_tlvs(self) -> bytes | None:
-        """Get current active operational dataset in TLVS format, or None.
+    async def create_active_dataset_tlvs(self, dataset: bytes) -> None:
+        """Create active operational dataset.
 
-        Returns None if there is no active operational dataset.
+        The passed in OperationalDataSet does not need to be fully populated, any fields
+        not set will be automatically set by the open thread border router.
         Raises if the http status is 400 or higher or if the response is invalid.
         """
-        response = await self._session.get(
+
+        response = await self._session.post(
             f"{self._url}/node/dataset/active",
-            headers={"Accept": "text/plain"},
-            raise_for_status=True,
-            timeout=aiohttp.ClientTimeout(total=self._timeout),
+            data=dataset.hex(),
+            headers={"Content-Type": "text/plain"},
+            timeout=aiohttp.ClientTimeout(total=10),
         )
 
-        if response.status == HTTPStatus.NO_CONTENT:
-            return None
-
-        if response.status != HTTPStatus.OK:
+        if response.status == HTTPStatus.CONFLICT:
+            raise ThreadNetworkActiveError
+        if response.status != HTTPStatus.ACCEPTED:
             raise OTBRError(f"unexpected http status {response.status}")
-
-        try:
-            return bytes.fromhex(await response.text("ASCII"))
-        except ValueError as exc:
-            raise OTBRError("unexpected API response") from exc
