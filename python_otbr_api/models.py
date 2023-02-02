@@ -46,7 +46,7 @@ class Timestamp:
 
 
 @dataclass
-class SecurityPolicy:
+class SecurityPolicy:  # pylint: disable=too-many-instance-attributes
     """Security policy."""
 
     SCHEMA = vol.Schema(
@@ -119,7 +119,7 @@ class SecurityPolicy:
 
 
 @dataclass
-class OperationalDataSet:
+class OperationalDataSet:  # pylint: disable=too-many-instance-attributes
     """Operational dataset."""
 
     SCHEMA = vol.Schema(
