@@ -36,4 +36,6 @@ jobs:
       - name: Lint with pylint
         run: |
           pylint python_otbr_api
-
+      - name: Run tests
+        run: |
+          pytest tests
