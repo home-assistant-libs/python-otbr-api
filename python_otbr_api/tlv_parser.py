@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from enum import IntEnum
 
+
 class TLVError(Exception):
     """TLV error."""
 
@@ -84,9 +85,7 @@ def parse_tlv(data: str) -> dict[MeshcopTLVType, str]:
         pos += 1
         val = data_bytes[pos : pos + _len]
         if len(val) < _len:
-            raise TLVError(
-                f"expected {_len} bytes for {tag.name}, got {len(val)}"
-            )
+            raise TLVError(f"expected {_len} bytes for {tag.name}, got {len(val)}")
         pos += _len
         if tag in result:
             raise TLVError(f"duplicated tag {tag.name}")
