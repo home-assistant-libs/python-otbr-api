@@ -31,7 +31,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
 
         response = await self._session.post(
             f"{self._url}/node/state",
-            json='"enabled"' if enabled else '"disabled"',
+            json="enabled" if enabled else "disabled",
             timeout=aiohttp.ClientTimeout(total=10),
         )
 
