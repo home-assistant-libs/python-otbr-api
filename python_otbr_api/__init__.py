@@ -80,15 +80,13 @@ class OTBR:  # pylint: disable=too-few-public-methods
         if response.status != HTTPStatus.ACCEPTED:
             raise OTBRError(f"unexpected http status {response.status}")
 
-    async def create_active_dataset_tlvs(self, dataset: bytes) -> None:
-        """Create active operational dataset.
+    async def set_active_dataset_tlvs(self, dataset: bytes) -> None:
+        """Set current active operational dataset.
 
-        The passed in OperationalDataSet does not need to be fully populated, any fields
-        not set will be automatically set by the open thread border router.
         Raises if the http status is 400 or higher or if the response is invalid.
         """
 
-        response = await self._session.post(
+        response = await self._session.put(
             f"{self._url}/node/dataset/active",
             data=dataset.hex(),
             headers={"Content-Type": "text/plain"},
