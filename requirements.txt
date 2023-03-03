@@ -1,3 +1,5 @@
 aiohttp
+bitstruct
 cryptography
+typing_extensions
 voluptuous
