@@ -1,4 +1,8 @@
-"""Utility function to decode fields in _meshcop._udp.local. mDNS services."""
+"""Utility function to decode fields in _meshcop._udp.local. mDNS services.
+
+The implementation is based on the Open Thread implementation:
+https://github.com/openthread/ot-br-posix/blob/8a8b2411abcf68659c25bb97672bdd2e5e724dcc/src/border_agent/border_agent.cpp#L109
+"""
 
 from dataclasses import dataclass
 from enum import IntEnum
