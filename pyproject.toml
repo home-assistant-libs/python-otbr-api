@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools~=67.5", "wheel~=0.37.1"]
+requires = ["setuptools~=65.6", "wheel~=0.37.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -12,7 +12,13 @@ authors      = [
     {name = "The Home Assistant Authors", email = "hello@home-assistant.io"}
 ]
 requires-python = ">=3.9.0"
-dynamic = ["dependencies"]
+dependencies = [
+    "aiohttp",
+    "bitstruct",
+    "cryptography",
+    "typing_extensions",
+    "voluptuous",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/home-assistant-libs/python-otbr-api"
@@ -28,9 +34,6 @@ good-names = [
 platforms = ["any"]
 zip-safe  = true
 include-package-data = true
-
-[tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
 
 [tool.setuptools.packages.find]
 include = ["python_otbr_api*"]
