@@ -28,6 +28,9 @@ platforms = ["any"]
 zip-safe  = true
 include-package-data = true
 
+[tool.setuptools.dynamic]
+dependencies  = {file = ["requirements.txt"]}
+
 [tool.setuptools.packages.find]
 include = ["python_otbr_api*"]
 
