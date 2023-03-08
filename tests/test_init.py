@@ -84,6 +84,17 @@ async def test_create_active_dataset(aioclient_mock: AiohttpClientMocker):
     }
 
 
+async def test_get_extended_address(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test get_active_dataset_tlvs."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    mock_response = "4EF6C4F3FF750626"
+
+    aioclient_mock.get(f"{BASE_URL}/node/ext-address", text=mock_response)
+
+    assert await otbr.get_extended_address() == bytes.fromhex(mock_response)
+
+
 async def test_set_enabled_201(aioclient_mock: AiohttpClientMocker) -> None:
     """Test set_enabled."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
@@ -152,3 +163,22 @@ async def test_set_active_dataset_tlvs_200(aioclient_mock: AiohttpClientMocker):
 
     with pytest.raises(python_otbr_api.OTBRError):
         await otbr.set_active_dataset_tlvs(b"")
+
+
+async def test_get_extended_address_201(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test get_extended_address with error."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.get(f"{BASE_URL}/node/ext-address", status=HTTPStatus.CREATED)
+
+    with pytest.raises(python_otbr_api.OTBRError):
+        await otbr.get_extended_address()
+
+
+async def test_get_extended_address_invalid(aioclient_mock: AiohttpClientMocker):
+    """Test get_extended_address with error."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.get(f"{BASE_URL}/node/ext-address", text="unexpected")
+    with pytest.raises(python_otbr_api.OTBRError):
+        await otbr.get_extended_address()
