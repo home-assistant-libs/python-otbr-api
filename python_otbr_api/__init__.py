@@ -101,7 +101,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
     async def get_extended_address(self) -> bytes:
         """Get extended address (EUI-64).
 
-        Raises if the http status is 400 or higher or if the response is invalid.
+        Raises if the http status is not 200 or if the response is invalid.
         """
         response = await self._session.get(
             f"{self._url}/node/ext-address",
