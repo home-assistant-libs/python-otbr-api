@@ -97,3 +97,22 @@ class OTBR:  # pylint: disable=too-few-public-methods
             raise ThreadNetworkActiveError
         if response.status != HTTPStatus.ACCEPTED:
             raise OTBRError(f"unexpected http status {response.status}")
+
+    async def get_extended_address(self) -> bytes:
+        """Get extended address (EUI-64).
+
+        Raises if the http status is 400 or higher or if the response is invalid.
+        """
+        response = await self._session.get(
+            f"{self._url}/node/ext-address",
+            headers={"Accept": "application/json"},
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+        try:
+            return bytes.fromhex(await response.text("ASCII"))
+        except ValueError as exc:
+            raise OTBRError("unexpected API response") from exc
