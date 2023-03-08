@@ -30,6 +30,9 @@ good-names = [
     "i",
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
 [tool.setuptools]
 platforms = ["any"]
 zip-safe  = true
