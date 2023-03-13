@@ -90,7 +90,7 @@ async def test_get_extended_address(aioclient_mock: AiohttpClientMocker) -> None
 
     mock_response = "4EF6C4F3FF750626"
 
-    aioclient_mock.get(f"{BASE_URL}/node/ext-address", text=mock_response)
+    aioclient_mock.get(f"{BASE_URL}/node/ext-address", json=mock_response)
 
     assert await otbr.get_extended_address() == bytes.fromhex(mock_response)
 
