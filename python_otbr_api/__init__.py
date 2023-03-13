@@ -113,6 +113,6 @@ class OTBR:  # pylint: disable=too-few-public-methods
             raise OTBRError(f"unexpected http status {response.status}")
 
         try:
-            return bytes.fromhex(await response.text("ASCII"))
+            return bytes.fromhex(await response.json())
         except ValueError as exc:
             raise OTBRError("unexpected API response") from exc
