@@ -11,7 +11,8 @@ from .models import OperationalDataSet
 
 # 5 minutes as recommended by
 # https://github.com/openthread/openthread/discussions/8567#discussioncomment-4468920
-PENDING_DATASET_DELAY_TIMER = 5*60*1000
+PENDING_DATASET_DELAY_TIMER = 5 * 60 * 1000
+
 
 class OTBRError(Exception):
     """Raised on error."""
@@ -149,10 +150,10 @@ class OTBR:  # pylint: disable=too-few-public-methods
         if not 11 <= channel <= 26:
             raise OTBRError(f"invalid channel {channel}")
         if not (dataset := await self.get_active_dataset()):
-            raise OTBRError(f"router has no active dataset")
+            raise OTBRError("router has no active dataset")
 
         dataset.active_timestamp.seconds += 1
-        dataset.channel=channel
+        dataset.channel = channel
         dataset.delay = PENDING_DATASET_DELAY_TIMER
 
         await self.create_pending_dataset(dataset)

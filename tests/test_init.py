@@ -188,9 +188,9 @@ async def test_set_channel(aioclient_mock: AiohttpClientMocker) -> None:
     await otbr.set_channel(new_channel)
     assert aioclient_mock.call_count == 2
     assert aioclient_mock.mock_calls[0][0] == "GET"
-    assert aioclient_mock.mock_calls[0][1].path == f"/node/dataset/active"
+    assert aioclient_mock.mock_calls[0][1].path == "/node/dataset/active"
     assert aioclient_mock.mock_calls[1][0] == "POST"
-    assert aioclient_mock.mock_calls[1][1].path == f"/node/dataset/pending"
+    assert aioclient_mock.mock_calls[1][1].path == "/node/dataset/pending"
     assert aioclient_mock.mock_calls[1][2] == expected_pending_dataset
 
 
