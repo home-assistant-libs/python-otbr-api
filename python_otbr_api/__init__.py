@@ -5,9 +5,9 @@ import json
 from typing import Literal
 
 import aiohttp
-import voluptuous as vol
+import voluptuous as vol  # type:ignore[import]
 
-from .models import OperationalDataSet
+from .models import OperationalDataSet, Timestamp
 
 # 5 minutes as recommended by
 # https://github.com/openthread/openthread/discussions/8567#discussioncomment-4468920
@@ -147,12 +147,20 @@ class OTBR:  # pylint: disable=too-few-public-methods
             raise OTBRError(f"unexpected http status {response.status}")
 
     async def set_channel(self, channel: int) -> None:
+        """Change the channel
+
+        The channel is changed by creating a new pending dataset based on the active
+        dataset.
+        """
         if not 11 <= channel <= 26:
             raise OTBRError(f"invalid channel {channel}")
         if not (dataset := await self.get_active_dataset()):
             raise OTBRError("router has no active dataset")
 
-        dataset.active_timestamp.seconds += 1
+        if dataset.active_timestamp and dataset.active_timestamp.seconds is not None:
+            dataset.active_timestamp.seconds += 1
+        else:
+            dataset.active_timestamp = Timestamp(False, 1, 0)
         dataset.channel = channel
         dataset.delay = PENDING_DATASET_DELAY_TIMER
 

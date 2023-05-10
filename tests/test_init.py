@@ -1,6 +1,7 @@
 """Test the OTBR REST API client."""
 
 from http import HTTPStatus
+from typing import Any
 
 import pytest
 import python_otbr_api
@@ -8,7 +9,7 @@ import python_otbr_api
 from tests.test_util.aiohttp import AiohttpClientMocker
 
 BASE_URL = "http://core-silabs-multiprotocol:8081"
-DATASET_JSON = {
+DATASET_JSON: dict[str, Any] = {
     "ActiveTimestamp": {
         "Authoritative": False,
         "Seconds": 1,
@@ -60,44 +61,42 @@ async def test_get_active_dataset(aioclient_mock: AiohttpClientMocker):
     """Test get_active_dataset."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
 
-    mock_response = DATASET_JSON
-
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=DATASET_JSON)
 
     active_timestamp = python_otbr_api.models.Timestamp(
-        mock_response["ActiveTimestamp"]["Authoritative"],
-        mock_response["ActiveTimestamp"]["Seconds"],
-        mock_response["ActiveTimestamp"]["Ticks"],
+        DATASET_JSON["ActiveTimestamp"]["Authoritative"],
+        DATASET_JSON["ActiveTimestamp"]["Seconds"],
+        DATASET_JSON["ActiveTimestamp"]["Ticks"],
     )
     security_policy = python_otbr_api.models.SecurityPolicy(
-        mock_response["SecurityPolicy"]["AutonomousEnrollment"],
-        mock_response["SecurityPolicy"]["CommercialCommissioning"],
-        mock_response["SecurityPolicy"]["ExternalCommissioning"],
-        mock_response["SecurityPolicy"]["NativeCommissioning"],
-        mock_response["SecurityPolicy"]["NetworkKeyProvisioning"],
-        mock_response["SecurityPolicy"]["NonCcmRouters"],
-        mock_response["SecurityPolicy"]["ObtainNetworkKey"],
-        mock_response["SecurityPolicy"]["RotationTime"],
-        mock_response["SecurityPolicy"]["Routers"],
-        mock_response["SecurityPolicy"]["TobleLink"],
+        DATASET_JSON["SecurityPolicy"]["AutonomousEnrollment"],
+        DATASET_JSON["SecurityPolicy"]["CommercialCommissioning"],
+        DATASET_JSON["SecurityPolicy"]["ExternalCommissioning"],
+        DATASET_JSON["SecurityPolicy"]["NativeCommissioning"],
+        DATASET_JSON["SecurityPolicy"]["NetworkKeyProvisioning"],
+        DATASET_JSON["SecurityPolicy"]["NonCcmRouters"],
+        DATASET_JSON["SecurityPolicy"]["ObtainNetworkKey"],
+        DATASET_JSON["SecurityPolicy"]["RotationTime"],
+        DATASET_JSON["SecurityPolicy"]["Routers"],
+        DATASET_JSON["SecurityPolicy"]["TobleLink"],
     )
 
     active_dataset = await otbr.get_active_dataset()
     assert active_dataset == python_otbr_api.OperationalDataSet(
         active_timestamp,
-        mock_response["ChannelMask"],
-        mock_response["Channel"],
+        DATASET_JSON["ChannelMask"],
+        DATASET_JSON["Channel"],
         None,  # delay
-        mock_response["ExtPanId"],
-        mock_response["MeshLocalPrefix"],
-        mock_response["NetworkKey"],
-        mock_response["NetworkName"],
-        mock_response["PanId"],
+        DATASET_JSON["ExtPanId"],
+        DATASET_JSON["MeshLocalPrefix"],
+        DATASET_JSON["NetworkKey"],
+        DATASET_JSON["NetworkName"],
+        DATASET_JSON["PanId"],
         None,  # pending_timestamp
-        mock_response["PSKc"],
+        DATASET_JSON["PSKc"],
         security_policy,
     )
-    assert active_dataset.as_json() == mock_response
+    assert active_dataset.as_json() == DATASET_JSON
 
 
 async def test_get_active_dataset_empty(aioclient_mock: AiohttpClientMocker):
@@ -179,6 +178,33 @@ async def test_set_channel(aioclient_mock: AiohttpClientMocker) -> None:
     new_channel = 16
     expected_active_timestamp = DATASET_JSON["ActiveTimestamp"] | {"Seconds": 2}
     expected_pending_dataset = DATASET_JSON | {
+        "ActiveTimestamp": expected_active_timestamp,
+        "Channel": new_channel,
+        "Delay": 300000,
+    }
+
+    assert new_channel != DATASET_JSON["Channel"]
+    await otbr.set_channel(new_channel)
+    assert aioclient_mock.call_count == 2
+    assert aioclient_mock.mock_calls[0][0] == "GET"
+    assert aioclient_mock.mock_calls[0][1].path == "/node/dataset/active"
+    assert aioclient_mock.mock_calls[1][0] == "POST"
+    assert aioclient_mock.mock_calls[1][1].path == "/node/dataset/pending"
+    assert aioclient_mock.mock_calls[1][2] == expected_pending_dataset
+
+
+async def test_set_channel_no_timestamp(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test set_channel."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    dataset_json = dict(DATASET_JSON)
+    dataset_json.pop("ActiveTimestamp")
+
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=dataset_json)
+    aioclient_mock.post(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.ACCEPTED)
+    new_channel = 16
+    expected_active_timestamp = {"Authoritative": False, "Seconds": 1, "Ticks": 0}
+    expected_pending_dataset = dataset_json | {
         "ActiveTimestamp": expected_active_timestamp,
         "Channel": new_channel,
         "Delay": 300000,
