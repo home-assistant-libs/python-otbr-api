@@ -180,6 +180,30 @@ async def test_set_channel(aioclient_mock: AiohttpClientMocker) -> None:
     expected_pending_dataset = DATASET_JSON | {
         "ActiveTimestamp": expected_active_timestamp,
         "Channel": new_channel,
+        "Delay": 1234,
+    }
+
+    assert new_channel != DATASET_JSON["Channel"]
+    await otbr.set_channel(new_channel, 1234)
+    assert aioclient_mock.call_count == 2
+    assert aioclient_mock.mock_calls[0][0] == "GET"
+    assert aioclient_mock.mock_calls[0][1].path == "/node/dataset/active"
+    assert aioclient_mock.mock_calls[1][0] == "POST"
+    assert aioclient_mock.mock_calls[1][1].path == "/node/dataset/pending"
+    assert aioclient_mock.mock_calls[1][2] == expected_pending_dataset
+
+
+async def test_set_channel_default_delay(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test set_channel."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=DATASET_JSON)
+    aioclient_mock.post(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.ACCEPTED)
+    new_channel = 16
+    expected_active_timestamp = DATASET_JSON["ActiveTimestamp"] | {"Seconds": 2}
+    expected_pending_dataset = DATASET_JSON | {
+        "ActiveTimestamp": expected_active_timestamp,
+        "Channel": new_channel,
         "Delay": 300000,
     }
 

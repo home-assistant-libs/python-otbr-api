@@ -146,7 +146,9 @@ class OTBR:  # pylint: disable=too-few-public-methods
         if response.status != HTTPStatus.ACCEPTED:
             raise OTBRError(f"unexpected http status {response.status}")
 
-    async def set_channel(self, channel: int) -> None:
+    async def set_channel(
+        self, channel: int, delay: int = PENDING_DATASET_DELAY_TIMER
+    ) -> None:
         """Change the channel
 
         The channel is changed by creating a new pending dataset based on the active
@@ -162,7 +164,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
         else:
             dataset.active_timestamp = Timestamp(False, 1, 0)
         dataset.channel = channel
-        dataset.delay = PENDING_DATASET_DELAY_TIMER
+        dataset.delay = delay
 
         await self.create_pending_dataset(dataset)
 
