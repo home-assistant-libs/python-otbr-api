@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from enum import IntEnum
+import struct
 
 
 class TLVError(Exception):
@@ -51,6 +52,30 @@ class MeshcopTLVType(IntEnum):
     DISCOVERYREQUEST = 128
     DISCOVERYRESPONSE = 129
     JOINERADVERTISEMENT = 241
+
+
+def _encode_item(tag: MeshcopTLVType, data: str) -> bytes:
+    """Encode a dataset item to TLV format."""
+    if tag == MeshcopTLVType.NETWORKNAME:
+        data_bytes = bytes(data, "utf-8")
+    else:
+        data_bytes = bytes.fromhex(data)
+
+    data_len = len(data_bytes)
+    return struct.pack(f"!BB{data_len}s", tag, data_len, data_bytes)
+
+
+def encode_tlv(items: dict[MeshcopTLVType, str]) -> str:
+    """Encode a TLV encoded dataset to a hex string.
+
+    Raises if the TLV is invalid.
+    """
+    result = b""
+
+    for item_type, item in items.items():
+        result += _encode_item(item_type, item)
+
+    return result.hex()
 
 
 def _parse_item(tag: MeshcopTLVType, data: bytes) -> str:

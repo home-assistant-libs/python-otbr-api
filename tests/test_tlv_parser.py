@@ -2,7 +2,32 @@
 
 import pytest
 
-from python_otbr_api.tlv_parser import MeshcopTLVType, TLVError, parse_tlv
+from python_otbr_api.tlv_parser import MeshcopTLVType, TLVError, encode_tlv, parse_tlv
+
+
+def test_encode_tlv() -> None:
+    """Test the TLV parser."""
+    dataset = {
+        MeshcopTLVType.ACTIVETIMESTAMP: "0000000000010000",
+        MeshcopTLVType.CHANNEL: "00000f",
+        MeshcopTLVType.CHANNELMASK: "0004001fffe0",
+        MeshcopTLVType.EXTPANID: "1111111122222222",
+        MeshcopTLVType.MESHLOCALPREFIX: "fdad70bfe5aa15dd",
+        MeshcopTLVType.NETWORKKEY: "00112233445566778899aabbccddeeff",
+        MeshcopTLVType.NETWORKNAME: "OpenThreadDemo",
+        MeshcopTLVType.PANID: "1234",
+        MeshcopTLVType.PSKC: "445f2b5ca6f2a93a55ce570a70efeecb",
+        MeshcopTLVType.SECURITYPOLICY: "02a0f7f8",
+    }
+    dataset_tlv = encode_tlv(dataset)
+    assert (
+        dataset_tlv
+        == (
+            "0E080000000000010000000300000F35060004001FFFE0020811111111222222220708FDAD"
+            "70BFE5AA15DD051000112233445566778899AABBCCDDEEFF030E4F70656E54687265616444"
+            "656D6F010212340410445F2B5CA6F2A93A55CE570A70EFEECB0C0402A0F7F8"
+        ).lower()
+    )
 
 
 def test_parse_tlv() -> None:
