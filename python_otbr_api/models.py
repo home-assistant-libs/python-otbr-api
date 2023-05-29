@@ -119,7 +119,7 @@ class SecurityPolicy:  # pylint: disable=too-many-instance-attributes
 
 
 @dataclass
-class OperationalDataSet:  # pylint: disable=too-many-instance-attributes
+class ActiveDataSet:  # pylint: disable=too-many-instance-attributes
     """Operational dataset."""
 
     SCHEMA = vol.Schema(
@@ -127,13 +127,11 @@ class OperationalDataSet:  # pylint: disable=too-many-instance-attributes
             vol.Optional("ActiveTimestamp"): dict,
             vol.Optional("ChannelMask"): int,
             vol.Optional("Channel"): int,
-            vol.Optional("Delay"): int,
             vol.Optional("ExtPanId"): str,
             vol.Optional("MeshLocalPrefix"): str,
             vol.Optional("NetworkKey"): str,
             vol.Optional("NetworkName"): str,
             vol.Optional("PanId"): int,
-            vol.Optional("PendingTimestamp"): dict,
             vol.Optional("PSKc"): str,
             vol.Optional("SecurityPolicy"): dict,
         }
@@ -142,13 +140,11 @@ class OperationalDataSet:  # pylint: disable=too-many-instance-attributes
     active_timestamp: Timestamp | None = None
     channel_mask: int | None = None
     channel: int | None = None
-    delay: int | None = None
     extended_pan_id: str | None = None
     mesh_local_prefix: str | None = None
     network_key: str | None = None
     network_name: str | None = None
     pan_id: int | None = None
-    pending_timestamp: Timestamp | None = None
     psk_c: str | None = None
     security_policy: SecurityPolicy | None = None
 
@@ -161,8 +157,6 @@ class OperationalDataSet:  # pylint: disable=too-many-instance-attributes
             result["ChannelMask"] = self.channel_mask
         if self.channel is not None:
             result["Channel"] = self.channel
-        if self.delay is not None:
-            result["Delay"] = self.delay
         if self.extended_pan_id is not None:
             result["ExtPanId"] = self.extended_pan_id
         if self.mesh_local_prefix is not None:
@@ -173,8 +167,6 @@ class OperationalDataSet:  # pylint: disable=too-many-instance-attributes
             result["NetworkName"] = self.network_name
         if self.pan_id is not None:
             result["PanId"] = self.pan_id
-        if self.pending_timestamp is not None:
-            result["PendingTimestamp"] = self.pending_timestamp.as_json()
         if self.psk_c is not None:
             result["PSKc"] = self.psk_c
         if self.security_policy is not None:
@@ -182,30 +174,70 @@ class OperationalDataSet:  # pylint: disable=too-many-instance-attributes
         return result
 
     @classmethod
-    def from_json(cls, json_data: Any) -> OperationalDataSet:
+    def from_json(cls, json_data: Any) -> ActiveDataSet:
         """Deserialize from JSON."""
         cls.SCHEMA(json_data)
         active_timestamp = None
-        pending_timestamp = None
         security_policy = None
         if "ActiveTimestamp" in json_data:
             active_timestamp = Timestamp.from_json(json_data["ActiveTimestamp"])
-        if "PendingTimestamp" in json_data:
-            pending_timestamp = Timestamp.from_json(json_data["PendingTimestamp"])
         if "SecurityPolicy" in json_data:
             security_policy = SecurityPolicy.from_json(json_data["SecurityPolicy"])
 
-        return OperationalDataSet(
+        return ActiveDataSet(
             active_timestamp,
             json_data.get("ChannelMask"),
             json_data.get("Channel"),
-            json_data.get("Delay"),
             json_data.get("ExtPanId"),
             json_data.get("MeshLocalPrefix"),
             json_data.get("NetworkKey"),
             json_data.get("NetworkName"),
             json_data.get("PanId"),
-            pending_timestamp,
             json_data.get("PSKc"),
             security_policy,
+        )
+
+
+@dataclass
+class PendingDataSet:  # pylint: disable=too-many-instance-attributes
+    """Operational dataset."""
+
+    SCHEMA = vol.Schema(
+        {
+            vol.Optional("ActiveDataset"): dict,
+            vol.Optional("Delay"): int,
+            vol.Optional("PendingTimestamp"): dict,
+        }
+    )
+
+    active_dataset: ActiveDataSet | None = None
+    delay: int | None = None
+    pending_timestamp: Timestamp | None = None
+
+    def as_json(self) -> dict:
+        """Serialize to JSON."""
+        result: dict[str, Any] = {}
+        if self.active_dataset is not None:
+            result["ActiveDataset"] = self.active_dataset.as_json()
+        if self.delay is not None:
+            result["Delay"] = self.delay
+        if self.pending_timestamp is not None:
+            result["PendingTimestamp"] = self.pending_timestamp.as_json()
+        return result
+
+    @classmethod
+    def from_json(cls, json_data: Any) -> PendingDataSet:
+        """Deserialize from JSON."""
+        cls.SCHEMA(json_data)
+        active_dataset = None
+        pending_timestamp = None
+        if "ActiveDataset" in json_data:
+            active_dataset = ActiveDataSet.from_json(json_data["ActiveDataset"])
+        if "PendingTimestamp" in json_data:
+            pending_timestamp = Timestamp.from_json(json_data["PendingTimestamp"])
+
+        return PendingDataSet(
+            active_dataset,
+            json_data.get("Delay"),
+            pending_timestamp,
         )
