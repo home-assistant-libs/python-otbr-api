@@ -24,9 +24,9 @@ def _derive_key(passphrase: str) -> bytes:
     return c.finalize()
 
 
-def compute_pskc(ext_pan_id: str, network_name: str, passphrase: str) -> bytes:
+def compute_pskc(ext_pan_id: bytes, network_name: str, passphrase: str) -> bytes:
     """Compute Thread PSKc."""
-    salt = SALT_PREFIX + bytes.fromhex(ext_pan_id) + network_name.encode()
+    salt = SALT_PREFIX + ext_pan_id + network_name.encode()
     key = _derive_key(passphrase)
 
     block_counter = 1
