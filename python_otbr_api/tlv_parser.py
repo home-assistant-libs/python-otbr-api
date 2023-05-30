@@ -1,6 +1,7 @@
 """Parse datasets TLV encoded as specified by Thread."""
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from enum import IntEnum
 import struct
 
@@ -54,42 +55,98 @@ class MeshcopTLVType(IntEnum):
     JOINERADVERTISEMENT = 241
 
 
-def _encode_item(tag: MeshcopTLVType, data: str) -> bytes:
+@dataclass
+class MeshcopTLVItem:
+    """Base class for TLV items."""
+
+    tag: int
+    data: bytes
+
+    def __str__(self) -> str:
+        """Return a string representation."""
+        return self.data.hex()
+
+
+@dataclass
+class Channel(MeshcopTLVItem):
+    """Channel."""
+
+    channel: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Decode the channel."""
+        self.channel = int.from_bytes(self.data, "big")
+        if not self.channel:
+            raise TLVError(f"invalid channel '{self.channel}'")
+
+
+@dataclass
+class NetworkName(MeshcopTLVItem):
+    """Network name."""
+
+    name: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Decode the name."""
+        try:
+            self.name = self.data.decode()
+        except UnicodeDecodeError as err:
+            raise TLVError(f"invalid network name '{self.data.hex()}'") from err
+
+    def __str__(self) -> str:
+        return self.name
+
+
+@dataclass
+class Timestamp(MeshcopTLVItem):
+    """Timestamp."""
+
+    authoritative: bool = field(init=False)
+    seconds: int = field(init=False)
+    ticks: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Decode the timestamp."""
+        # The timestamps are packed in 8 bytes:
+        # [seconds 48 bits][ticks 15 bits][authoritative flag 1 bit]
+        unpacked: int = struct.unpack("!Q", self.data)[0]
+        self.authoritative = bool(unpacked & 1)
+        self.seconds = unpacked >> 16
+        self.ticks = (unpacked >> 1) & 0x7FF
+
+
+def _encode_item(item: MeshcopTLVItem) -> bytes:
     """Encode a dataset item to TLV format."""
-    if tag == MeshcopTLVType.NETWORKNAME:
-        data_bytes = bytes(data, "utf-8")
-    else:
-        data_bytes = bytes.fromhex(data)
-
-    data_len = len(data_bytes)
-    return struct.pack(f"!BB{data_len}s", tag, data_len, data_bytes)
+    data_len = len(item.data)
+    return struct.pack(f"!BB{data_len}s", item.tag, data_len, item.data)
 
 
-def encode_tlv(items: dict[MeshcopTLVType, str]) -> str:
+def encode_tlv(items: dict[MeshcopTLVType, MeshcopTLVItem]) -> str:
     """Encode a TLV encoded dataset to a hex string.
 
     Raises if the TLV is invalid.
     """
     result = b""
 
-    for item_type, item in items.items():
-        result += _encode_item(item_type, item)
+    for item in items.values():
+        result += _encode_item(item)
 
     return result.hex()
 
 
-def _parse_item(tag: MeshcopTLVType, data: bytes) -> str:
+def _parse_item(tag: MeshcopTLVType, data: bytes) -> MeshcopTLVItem:
     """Parse a TLV encoded dataset item."""
+    if tag == MeshcopTLVType.ACTIVETIMESTAMP:
+        return Timestamp(tag, data)
+    if tag == MeshcopTLVType.CHANNEL:
+        return Channel(tag, data)
     if tag == MeshcopTLVType.NETWORKNAME:
-        try:
-            return data.decode()
-        except UnicodeDecodeError as err:
-            raise TLVError(f"invalid network name '{data.hex()}'") from err
+        return NetworkName(tag, data)
 
-    return data.hex()
+    return MeshcopTLVItem(tag, data)
 
 
-def parse_tlv(data: str) -> dict[MeshcopTLVType, str]:
+def parse_tlv(data: str) -> dict[MeshcopTLVType, MeshcopTLVItem]:
     """Parse a TLV encoded dataset.
 
     Raises if the TLV is invalid.
