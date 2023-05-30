@@ -2,22 +2,51 @@
 
 import pytest
 
-from python_otbr_api.tlv_parser import MeshcopTLVType, TLVError, encode_tlv, parse_tlv
+from python_otbr_api.tlv_parser import (
+    Timestamp,
+    Channel,
+    MeshcopTLVItem,
+    MeshcopTLVType,
+    NetworkName,
+    TLVError,
+    encode_tlv,
+    parse_tlv,
+)
 
 
 def test_encode_tlv() -> None:
     """Test the TLV parser."""
     dataset = {
-        MeshcopTLVType.ACTIVETIMESTAMP: "0000000000010000",
-        MeshcopTLVType.CHANNEL: "00000f",
-        MeshcopTLVType.CHANNELMASK: "0004001fffe0",
-        MeshcopTLVType.EXTPANID: "1111111122222222",
-        MeshcopTLVType.MESHLOCALPREFIX: "fdad70bfe5aa15dd",
-        MeshcopTLVType.NETWORKKEY: "00112233445566778899aabbccddeeff",
-        MeshcopTLVType.NETWORKNAME: "OpenThreadDemo",
-        MeshcopTLVType.PANID: "1234",
-        MeshcopTLVType.PSKC: "445f2b5ca6f2a93a55ce570a70efeecb",
-        MeshcopTLVType.SECURITYPOLICY: "02a0f7f8",
+        MeshcopTLVType.ACTIVETIMESTAMP: MeshcopTLVItem(
+            MeshcopTLVType.ACTIVETIMESTAMP, bytes.fromhex("0000000000010000")
+        ),
+        MeshcopTLVType.CHANNEL: MeshcopTLVItem(
+            MeshcopTLVType.CHANNEL, bytes.fromhex("00000f")
+        ),
+        MeshcopTLVType.CHANNELMASK: MeshcopTLVItem(
+            MeshcopTLVType.CHANNELMASK, bytes.fromhex("0004001fffe0")
+        ),
+        MeshcopTLVType.EXTPANID: MeshcopTLVItem(
+            MeshcopTLVType.EXTPANID, bytes.fromhex("1111111122222222")
+        ),
+        MeshcopTLVType.MESHLOCALPREFIX: MeshcopTLVItem(
+            MeshcopTLVType.MESHLOCALPREFIX, bytes.fromhex("fdad70bfe5aa15dd")
+        ),
+        MeshcopTLVType.NETWORKKEY: MeshcopTLVItem(
+            MeshcopTLVType.NETWORKKEY, bytes.fromhex("00112233445566778899aabbccddeeff")
+        ),
+        MeshcopTLVType.NETWORKNAME: NetworkName(
+            MeshcopTLVType.NETWORKNAME, "OpenThreadDemo".encode()
+        ),
+        MeshcopTLVType.PANID: MeshcopTLVItem(
+            MeshcopTLVType.PANID, bytes.fromhex("1234")
+        ),
+        MeshcopTLVType.PSKC: MeshcopTLVItem(
+            MeshcopTLVType.PSKC, bytes.fromhex("445f2b5ca6f2a93a55ce570a70efeecb")
+        ),
+        MeshcopTLVType.SECURITYPOLICY: MeshcopTLVItem(
+            MeshcopTLVType.SECURITYPOLICY, bytes.fromhex("02a0f7f8")
+        ),
     }
     dataset_tlv = encode_tlv(dataset)
     assert (
@@ -39,16 +68,36 @@ def test_parse_tlv() -> None:
     )
     dataset = parse_tlv(dataset_tlv)
     assert dataset == {
-        MeshcopTLVType.CHANNEL: "00000f",
-        MeshcopTLVType.PANID: "1234",
-        MeshcopTLVType.EXTPANID: "1111111122222222",
-        MeshcopTLVType.NETWORKNAME: "OpenThreadDemo",
-        MeshcopTLVType.PSKC: "445f2b5ca6f2a93a55ce570a70efeecb",
-        MeshcopTLVType.NETWORKKEY: "00112233445566778899aabbccddeeff",
-        MeshcopTLVType.MESHLOCALPREFIX: "fdad70bfe5aa15dd",
-        MeshcopTLVType.SECURITYPOLICY: "02a0f7f8",
-        MeshcopTLVType.ACTIVETIMESTAMP: "0000000000010000",
-        MeshcopTLVType.CHANNELMASK: "0004001fffe0",
+        MeshcopTLVType.CHANNEL: Channel(
+            MeshcopTLVType.CHANNEL, bytes.fromhex("00000f")
+        ),
+        MeshcopTLVType.PANID: MeshcopTLVItem(
+            MeshcopTLVType.PANID, bytes.fromhex("1234")
+        ),
+        MeshcopTLVType.EXTPANID: MeshcopTLVItem(
+            MeshcopTLVType.EXTPANID, bytes.fromhex("1111111122222222")
+        ),
+        MeshcopTLVType.NETWORKNAME: NetworkName(
+            MeshcopTLVType.NETWORKNAME, "OpenThreadDemo".encode()
+        ),
+        MeshcopTLVType.PSKC: MeshcopTLVItem(
+            MeshcopTLVType.PSKC, bytes.fromhex("445f2b5ca6f2a93a55ce570a70efeecb")
+        ),
+        MeshcopTLVType.NETWORKKEY: MeshcopTLVItem(
+            MeshcopTLVType.NETWORKKEY, bytes.fromhex("00112233445566778899aabbccddeeff")
+        ),
+        MeshcopTLVType.MESHLOCALPREFIX: MeshcopTLVItem(
+            MeshcopTLVType.MESHLOCALPREFIX, bytes.fromhex("fdad70bfe5aa15dd")
+        ),
+        MeshcopTLVType.SECURITYPOLICY: MeshcopTLVItem(
+            MeshcopTLVType.SECURITYPOLICY, bytes.fromhex("02a0f7f8")
+        ),
+        MeshcopTLVType.ACTIVETIMESTAMP: Timestamp(
+            MeshcopTLVType.ACTIVETIMESTAMP, bytes.fromhex("0000000000010000")
+        ),
+        MeshcopTLVType.CHANNELMASK: MeshcopTLVItem(
+            MeshcopTLVType.CHANNELMASK, bytes.fromhex("0004001fffe0")
+        ),
     }
 
 
