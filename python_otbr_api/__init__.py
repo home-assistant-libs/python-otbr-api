@@ -89,6 +89,29 @@ class OTBR:  # pylint: disable=too-few-public-methods
         except ValueError as exc:
             raise OTBRError("unexpected API response") from exc
 
+    async def get_pending_dataset_tlvs(self) -> bytes | None:
+        """Get current pending operational dataset in TLVS format, or None.
+
+        Returns None if there is no pending operational dataset.
+        Raises if the http status is 400 or higher or if the response is invalid.
+        """
+        response = await self._session.get(
+            f"{self._url}/node/dataset/pending",
+            headers={"Accept": "text/plain"},
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status == HTTPStatus.NO_CONTENT:
+            return None
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+        try:
+            return bytes.fromhex(await response.text("ASCII"))
+        except ValueError as exc:
+            raise OTBRError("unexpected API response") from exc
+
     async def create_active_dataset(self, dataset: ActiveDataSet) -> None:
         """Create active operational dataset.
 
