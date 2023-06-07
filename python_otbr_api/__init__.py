@@ -130,6 +130,18 @@ class OTBR:  # pylint: disable=too-few-public-methods
         if response.status not in (HTTPStatus.CREATED, HTTPStatus.OK):
             raise OTBRError(f"unexpected http status {response.status}")
 
+    async def delete_active_dataset(self) -> None:
+        """Delete active operational dataset."""
+        response = await self._session.delete(
+            f"{self._url}/node/dataset/active",
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status == HTTPStatus.CONFLICT:
+            raise ThreadNetworkActiveError
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
     async def create_pending_dataset(self, dataset: PendingDataSet) -> None:
         """Create pending operational dataset.
 
@@ -146,6 +158,18 @@ class OTBR:  # pylint: disable=too-few-public-methods
         if response.status == HTTPStatus.CONFLICT:
             raise ThreadNetworkActiveError
         if response.status not in (HTTPStatus.CREATED, HTTPStatus.OK):
+            raise OTBRError(f"unexpected http status {response.status}")
+
+    async def delete_pending_dataset(self) -> None:
+        """Delete pending operational dataset."""
+        response = await self._session.delete(
+            f"{self._url}/node/dataset/pending",
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status == HTTPStatus.CONFLICT:
+            raise ThreadNetworkActiveError
+        if response.status != HTTPStatus.OK:
             raise OTBRError(f"unexpected http status {response.status}")
 
     async def set_active_dataset_tlvs(self, dataset: bytes) -> None:

@@ -183,6 +183,19 @@ async def test_create_active_dataset(aioclient_mock: AiohttpClientMocker):
     }
 
 
+async def test_delete_active_dataset(aioclient_mock: AiohttpClientMocker):
+    """Test delete_active_dataset."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.delete(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.OK)
+
+    await otbr.delete_active_dataset()
+    assert aioclient_mock.call_count == 1
+    assert aioclient_mock.mock_calls[-1][0] == "DELETE"
+    assert aioclient_mock.mock_calls[-1][1].path == "/node/dataset/active"
+    assert aioclient_mock.mock_calls[-1][2] is None
+
+
 async def test_create_pending_dataset(aioclient_mock: AiohttpClientMocker):
     """Test create_pending_dataset."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
@@ -229,6 +242,19 @@ async def test_create_pending_dataset(aioclient_mock: AiohttpClientMocker):
         },
         "Delay": 23456,
     }
+
+
+async def test_delete_pending_dataset(aioclient_mock: AiohttpClientMocker):
+    """Test delete_pending_dataset."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.delete(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.OK)
+
+    await otbr.delete_pending_dataset()
+    assert aioclient_mock.call_count == 1
+    assert aioclient_mock.mock_calls[-1][0] == "DELETE"
+    assert aioclient_mock.mock_calls[-1][1].path == "/node/dataset/pending"
+    assert aioclient_mock.mock_calls[-1][2] is None
 
 
 async def test_set_channel(aioclient_mock: AiohttpClientMocker) -> None:
@@ -430,6 +456,26 @@ async def test_create_active_dataset_202(aioclient_mock: AiohttpClientMocker):
         await otbr.create_active_dataset(python_otbr_api.ActiveDataSet())
 
 
+async def test_delete_active_dataset_thread_active(aioclient_mock: AiohttpClientMocker):
+    """Test delete_active_dataset with error."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.delete(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.CONFLICT)
+
+    with pytest.raises(python_otbr_api.ThreadNetworkActiveError):
+        await otbr.delete_active_dataset()
+
+
+async def test_delete_active_dataset_202(aioclient_mock: AiohttpClientMocker):
+    """Test delete_active_dataset with error."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.delete(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.ACCEPTED)
+
+    with pytest.raises(python_otbr_api.OTBRError):
+        await otbr.delete_active_dataset()
+
+
 async def test_create_pending_dataset_thread_active(
     aioclient_mock: AiohttpClientMocker,
 ):
@@ -450,6 +496,32 @@ async def test_create_pending_dataset_202(aioclient_mock: AiohttpClientMocker):
 
     with pytest.raises(python_otbr_api.OTBRError):
         await otbr.create_pending_dataset(python_otbr_api.PendingDataSet())
+
+
+async def test_delete_pending_dataset_thread_active(
+    aioclient_mock: AiohttpClientMocker,
+):
+    """Test delete_pending_dataset with error."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.delete(
+        f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CONFLICT
+    )
+
+    with pytest.raises(python_otbr_api.ThreadNetworkActiveError):
+        await otbr.delete_pending_dataset()
+
+
+async def test_delete_pending_dataset_202(aioclient_mock: AiohttpClientMocker):
+    """Test delete_pending_dataset with error."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.delete(
+        f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.ACCEPTED
+    )
+
+    with pytest.raises(python_otbr_api.OTBRError):
+        await otbr.delete_pending_dataset()
 
 
 async def test_set_active_dataset_tlvs_thread_active(
