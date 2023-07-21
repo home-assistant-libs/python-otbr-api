@@ -61,7 +61,7 @@ async def test_factory_reset_unsupported(aioclient_mock: AiohttpClientMocker) ->
         await otbr.factory_reset()
 
 
-async def test_get_extended_address_201(aioclient_mock: AiohttpClientMocker) -> None:
+async def test_factory_reset_201(aioclient_mock: AiohttpClientMocker) -> None:
     """Test factory_reset with error."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
 
