@@ -16,8 +16,10 @@ PENDING_DATASET_DELAY_TIMER = 5 * 60 * 1000
 class OTBRError(Exception):
     """Raised on error."""
 
+
 class FactoryResetNotSupportedError(OTBRError):
     """Raised when attempting to factory reset a router which does not support it."""
+
 
 class ThreadNetworkActiveError(OTBRError):
     """Raised on attempts to modify the active dataset when thread network is active."""
