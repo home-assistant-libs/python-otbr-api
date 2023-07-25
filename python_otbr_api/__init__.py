@@ -17,6 +17,10 @@ class OTBRError(Exception):
     """Raised on error."""
 
 
+class FactoryResetNotSupportedError(OTBRError):
+    """Raised when attempting to factory reset a router which does not support it."""
+
+
 class ThreadNetworkActiveError(OTBRError):
     """Raised on attempts to modify the active dataset when thread network is active."""
 
@@ -31,6 +35,20 @@ class OTBR:  # pylint: disable=too-few-public-methods
         self._session = session
         self._url = url
         self._timeout = timeout
+
+    async def factory_reset(self) -> None:
+        """Factory reset the router."""
+
+        response = await self._session.delete(
+            f"{self._url}/node",
+            timeout=aiohttp.ClientTimeout(total=10),
+        )
+
+        if response.status == HTTPStatus.METHOD_NOT_ALLOWED:
+            raise FactoryResetNotSupportedError
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
 
     async def set_enabled(self, enabled: bool) -> None:
         """Enable or disable the router."""

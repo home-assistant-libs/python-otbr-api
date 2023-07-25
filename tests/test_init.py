@@ -38,6 +38,39 @@ DATASET_JSON: dict[str, Any] = {
 }
 
 
+async def test_factory_reset(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test factory_reset."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.delete(f"{BASE_URL}/node", status=HTTPStatus.OK)
+
+    await otbr.factory_reset()
+    assert aioclient_mock.call_count == 1
+    assert aioclient_mock.mock_calls[-1][0] == "DELETE"
+    assert aioclient_mock.mock_calls[-1][1].path == "/node"
+    assert aioclient_mock.mock_calls[-1][2] is None
+
+
+async def test_factory_reset_unsupported(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test factory_reset is unsupported."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.delete(f"{BASE_URL}/node", status=HTTPStatus.METHOD_NOT_ALLOWED)
+
+    with pytest.raises(python_otbr_api.FactoryResetNotSupportedError):
+        await otbr.factory_reset()
+
+
+async def test_factory_reset_201(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test factory_reset with error."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.delete(f"{BASE_URL}/node", status=HTTPStatus.CREATED)
+
+    with pytest.raises(python_otbr_api.OTBRError):
+        await otbr.factory_reset()
+
+
 async def test_set_enabled(aioclient_mock: AiohttpClientMocker) -> None:
     """Test set_enabled."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
