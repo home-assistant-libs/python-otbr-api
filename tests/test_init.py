@@ -82,6 +82,18 @@ async def test_get_border_agent_id(aioclient_mock: AiohttpClientMocker) -> None:
     assert await otbr.get_border_agent_id() == bytes.fromhex(mock_response)
 
 
+async def test_get_border_agent_id_unsupported(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Test get_border_agent_id with error."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.get(f"{BASE_URL}/node/ba-id", status=HTTPStatus.NOT_FOUND)
+
+    with pytest.raises(python_otbr_api.GetBorderAgentIdNotSupportedError):
+        await otbr.get_border_agent_id()
+
+
 async def test_get_border_agent_id_invalid(aioclient_mock: AiohttpClientMocker) -> None:
     """Test get_border_agent_id with error."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
