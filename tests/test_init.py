@@ -82,7 +82,9 @@ async def test_get_border_agent_id(aioclient_mock: AiohttpClientMocker) -> None:
     assert await otbr.get_border_agent_id() == bytes.fromhex(mock_response)
 
 
-async def test_get_border_agent_id_unsupported(aioclient_mock: AiohttpClientMocker) -> None:
+async def test_get_border_agent_id_unsupported(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
     """Test get_border_agent_id with error."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
 
