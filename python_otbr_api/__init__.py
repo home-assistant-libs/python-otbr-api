@@ -21,6 +21,10 @@ class FactoryResetNotSupportedError(OTBRError):
     """Raised when attempting to factory reset a router which does not support it."""
 
 
+class GetBorderAgentIdNotSupportedError(OTBRError):
+    """Raised when attempting to get the agent ID if the router does not support it."""
+
+
 class ThreadNetworkActiveError(OTBRError):
     """Raised on attempts to modify the active dataset when thread network is active."""
 
@@ -56,6 +60,9 @@ class OTBR:  # pylint: disable=too-few-public-methods
             f"{self._url}/node/ba-id",
             timeout=aiohttp.ClientTimeout(total=self._timeout),
         )
+
+        if response.status == HTTPStatus.NOT_FOUND:
+            raise GetBorderAgentIdNotSupportedError
 
         if response.status != HTTPStatus.OK:
             raise OTBRError(f"unexpected http status {response.status}")
