@@ -90,7 +90,7 @@ async def test_get_border_agent_id_unsupported(
 
     aioclient_mock.get(f"{BASE_URL}/node/ba-id", status=HTTPStatus.NOT_FOUND)
 
-    with pytest.raises(python_otbr_api.OTBRError):
+    with pytest.raises(python_otbr_api.GetBorderAgentIdNotSupportedError):
         await otbr.get_border_agent_id()
 
 
