@@ -71,6 +71,37 @@ async def test_factory_reset_201(aioclient_mock: AiohttpClientMocker) -> None:
         await otbr.factory_reset()
 
 
+async def test_get_border_agent_id(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test get_border_agent_id."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    mock_response = "230C6A1AC57F6F4BE262ACF32E5EF52C"
+
+    aioclient_mock.get(f"{BASE_URL}/node/ba-id", json=mock_response)
+
+    assert await otbr.get_border_agent_id() == bytes.fromhex(mock_response)
+
+
+async def test_get_border_agent_id_invalid(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test get_border_agent_id with error."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.get(f"{BASE_URL}/node/ba-id", text="unexpected")
+
+    with pytest.raises(python_otbr_api.OTBRError):
+        await otbr.get_border_agent_id()
+
+
+async def test_get_border_agent_id_201(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test get_border_agent_id with error."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.get(f"{BASE_URL}/node/ba-id", status=HTTPStatus.CREATED)
+
+    with pytest.raises(python_otbr_api.OTBRError):
+        await otbr.get_border_agent_id()
+
+
 async def test_set_enabled(aioclient_mock: AiohttpClientMocker) -> None:
     """Test set_enabled."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())

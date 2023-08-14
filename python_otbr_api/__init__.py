@@ -50,6 +50,20 @@ class OTBR:  # pylint: disable=too-few-public-methods
         if response.status != HTTPStatus.OK:
             raise OTBRError(f"unexpected http status {response.status}")
 
+    async def get_border_agent_id(self) -> bytes:
+        response = await self._session.get(
+            f"{self._url}/node/ba-id",
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+        try:
+            return bytes.fromhex(await response.json())
+        except ValueError as exc:
+            raise OTBRError("unexpected API response") from exc
+
     async def set_enabled(self, enabled: bool) -> None:
         """Enable or disable the router."""
 
