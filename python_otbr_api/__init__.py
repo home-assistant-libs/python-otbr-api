@@ -51,6 +51,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
             raise OTBRError(f"unexpected http status {response.status}")
 
     async def get_border_agent_id(self) -> bytes:
+        """Get the border agent ID."""
         response = await self._session.get(
             f"{self._url}/node/ba-id",
             timeout=aiohttp.ClientTimeout(total=self._timeout),
