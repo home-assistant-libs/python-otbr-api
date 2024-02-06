@@ -115,8 +115,8 @@ def test_parse_tlv_apple() -> None:
         MeshcopTLVType.CHANNEL: Channel(
             MeshcopTLVType.CHANNEL, bytes.fromhex("000019")
         ),
-        MeshcopTLVType.VENDOR_UNKNOWN: MeshcopTLVItem(
-            MeshcopTLVType.VENDOR_UNKNOWN, bytes.fromhex("00000f")
+        MeshcopTLVType.APPLE_TAG_UNKNOWN: MeshcopTLVItem(
+            MeshcopTLVType.APPLE_TAG_UNKNOWN, bytes.fromhex("00000f")
         ),
         MeshcopTLVType.CHANNELMASK: MeshcopTLVItem(
             MeshcopTLVType.CHANNELMASK, bytes.fromhex("0004001fffc0")
