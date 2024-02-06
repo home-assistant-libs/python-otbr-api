@@ -103,8 +103,10 @@ def test_parse_tlv() -> None:
 
 def test_parse_tlv_apple() -> None:
     """Test the TLV parser from a (truncated) dataset from an Apple BR."""
-    dataset_tlv = "0e08000065901a07000000030000194a0300000f35060004001fffc003104d79486f"
-    "6d6531323331323331323334"
+    dataset_tlv = (
+        "0e08000065901a07000000030000194a0300000f35060004001fffc003104d79486f6d65313233"
+        "31323331323334"
+    )
     dataset = parse_tlv(dataset_tlv)
     assert dataset == {
         MeshcopTLVType.ACTIVETIMESTAMP: Timestamp(
