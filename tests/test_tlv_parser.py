@@ -101,6 +101,32 @@ def test_parse_tlv() -> None:
     }
 
 
+def test_parse_tlv_apple() -> None:
+    """Test the TLV parser from a (truncated) dataset from an Apple BR."""
+    dataset_tlv = (
+        "0e08000065901a07000000030000194a0300000f35060004001fffc003104d79486f6d65313233"
+        "31323331323334"
+    )
+    dataset = parse_tlv(dataset_tlv)
+    assert dataset == {
+        MeshcopTLVType.ACTIVETIMESTAMP: Timestamp(
+            MeshcopTLVType.ACTIVETIMESTAMP, bytes.fromhex("000065901a070000")
+        ),
+        MeshcopTLVType.CHANNEL: Channel(
+            MeshcopTLVType.CHANNEL, bytes.fromhex("000019")
+        ),
+        MeshcopTLVType.APPLE_TAG_UNKNOWN: MeshcopTLVItem(
+            MeshcopTLVType.APPLE_TAG_UNKNOWN, bytes.fromhex("00000f")
+        ),
+        MeshcopTLVType.CHANNELMASK: MeshcopTLVItem(
+            MeshcopTLVType.CHANNELMASK, bytes.fromhex("0004001fffc0")
+        ),
+        MeshcopTLVType.NETWORKNAME: NetworkName(
+            MeshcopTLVType.NETWORKNAME, "MyHome1231231234".encode()
+        ),
+    }
+
+
 @pytest.mark.parametrize(
     "tlv, error, msg",
     (
