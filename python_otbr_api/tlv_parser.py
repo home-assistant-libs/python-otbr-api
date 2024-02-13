@@ -1,4 +1,5 @@
 """Parse datasets TLV encoded as specified by Thread."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
