@@ -1,4 +1,5 @@
 """API to interact with the Open Thread Border Router REST API."""
+
 from __future__ import annotations
 from http import HTTPStatus
 import json
