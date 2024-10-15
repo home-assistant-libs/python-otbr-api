@@ -160,6 +160,7 @@ class AiohttpClientMockResponse:
         self,
         method,
         url,
+        *,
         status=HTTPStatus.OK,
         response=None,
         json=None,
