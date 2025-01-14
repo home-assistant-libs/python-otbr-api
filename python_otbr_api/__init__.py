@@ -274,7 +274,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
 
     async def get_coprocessor_version(self) -> str:
         """Get the coprocessor firmware version.
-        
+
         Raises if the http status is not 200 or if the response is invalid.
         """
 
