@@ -271,3 +271,23 @@ class OTBR:  # pylint: disable=too-few-public-methods
             return bytes.fromhex(await response.json())
         except ValueError as exc:
             raise OTBRError("unexpected API response") from exc
+
+    async def get_coprocessor_version(self) -> str:
+        """Get the coprocessor firmware version.
+
+        Raises if the http status is not 200 or if the response is invalid.
+        """
+
+        response = await self._session.get(
+            f"{self._url}/node/coprocessor/version",
+            headers={"Accept": "application/json"},
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+        try:
+            return await response.json()
+        except ValueError as exc:
+            raise OTBRError("unexpected API response") from exc

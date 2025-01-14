@@ -446,6 +446,20 @@ async def test_get_extended_address(aioclient_mock: AiohttpClientMocker) -> None
     assert await otbr.get_extended_address() == bytes.fromhex(mock_response)
 
 
+async def test_get_coprocessor_version(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test get_coprocessor_version."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    mock_response = (
+        "OPENTHREAD/thread-reference-20200818-1740-g33cc75ed3;"
+        " NRF52840; Jun 2 2022 14:25:49"
+    )
+
+    aioclient_mock.get(f"{BASE_URL}/node/coprocessor/version", json=mock_response)
+
+    assert await otbr.get_coprocessor_version() == mock_response
+
+
 async def test_set_enabled_201(aioclient_mock: AiohttpClientMocker) -> None:
     """Test set_enabled."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
@@ -639,3 +653,15 @@ async def test_get_extended_address_invalid(aioclient_mock: AiohttpClientMocker)
     aioclient_mock.get(f"{BASE_URL}/node/ext-address", text="unexpected")
     with pytest.raises(python_otbr_api.OTBRError):
         await otbr.get_extended_address()
+
+
+async def test_get_coprocessor_version_invalid(aioclient_mock: AiohttpClientMocker):
+    """Test get_coprocessor_version with error."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.get(
+        f"{BASE_URL}/node/coprocessor/version", status=HTTPStatus.NOT_FOUND
+    )
+
+    with pytest.raises(python_otbr_api.OTBRError):
+        await otbr.get_coprocessor_version()
