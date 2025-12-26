@@ -51,6 +51,7 @@ class MeshcopTLVType(IntEnum):
     PERIOD = 55
     SCAN_DURATION = 56
     ENERGY_LIST = 57
+    THREAD_DOMAIN_NAME = 59
     # Seen in a dataset imported through iOS companion app
     APPLE_TAG_UNKNOWN = 74
     DISCOVERYREQUEST = 128
