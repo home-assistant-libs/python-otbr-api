@@ -299,7 +299,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
         Raises if the http status is 400 or higher or if the response is invalid.
         """
         response = await self._session.get(
-            f"{self._url}/api/diagnostics",
+            f"{self._url}/diagnostics",
             headers={"Accept": "application/json"},
             timeout=aiohttp.ClientTimeout(total=self._timeout),
         )
