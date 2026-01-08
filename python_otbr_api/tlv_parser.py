@@ -115,7 +115,7 @@ class Timestamp(MeshcopTLVItem):
         unpacked: int = struct.unpack("!Q", self.data)[0]
         self.authoritative = bool(unpacked & 1)
         self.seconds = unpacked >> 16
-        self.ticks = (unpacked >> 1) & 0x7FF
+        self.ticks = (unpacked >> 1) & 0x7FFF
 
 
 def _encode_item(item: MeshcopTLVItem) -> bytes:
