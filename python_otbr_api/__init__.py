@@ -314,4 +314,3 @@ class OTBR:  # pylint: disable=too-few-public-methods
             return await response.json()
         except ValueError as exc:
             raise OTBRError("unexpected API response") from exc
-
