@@ -161,18 +161,18 @@ def test_parse_tlv_error(tlv, error, msg) -> None:
 def test_timestamp_parsing_full_integrity() -> None:
     """
     Test parsing of a timestamp with mixed values for seconds, ticks, and authoritative.
-    
+
     We construct a value to ensure no bit overlap:
     - Seconds: 400 (0x190)
     - Ticks: 32767 (0x7FFF, Max value to catch the masking bug)
     - Authoritative: True (1)
-    
+
     Hex Construction:
     - Seconds (48 bits): 00 00 00 00 01 90
     - Ticks/Auth (16 bits):
       (Ticks << 1) | Auth
       (0x7FFF << 1) | 1  =>  0xFFFE | 1  =>  0xFFFF
-    
+
     Combined Hex: 000000000190FFFF
     """
     timestamp_data = bytes.fromhex("000000000190FFFF")
