@@ -14,6 +14,64 @@ from python_otbr_api.tlv_parser import (
 )
 
 
+# Shared dataset covering the newly added Meshcop TLV types.
+NEW_MESHCOP_DATASET = {
+    MeshcopTLVType.DURATION: MeshcopTLVItem(
+        MeshcopTLVType.DURATION, bytes.fromhex("05")
+    ),
+    MeshcopTLVType.PROVISIONING_URL: MeshcopTLVItem(
+        MeshcopTLVType.PROVISIONING_URL, "test".encode()
+    ),
+    MeshcopTLVType.VENDOR_NAME_TLV: MeshcopTLVItem(
+        MeshcopTLVType.VENDOR_NAME_TLV, "ACME".encode()
+    ),
+    MeshcopTLVType.UDP_ENCAPSULATION_TLV: MeshcopTLVItem(
+        MeshcopTLVType.UDP_ENCAPSULATION_TLV, bytes.fromhex("beef")
+    ),
+    MeshcopTLVType.IPV6_ADDRESS_TLV: MeshcopTLVItem(
+        MeshcopTLVType.IPV6_ADDRESS_TLV,
+        bytes.fromhex("20010db8000000000000000000000001"),
+    ),
+    MeshcopTLVType.PENDINGTIMESTAMP: MeshcopTLVItem(
+        MeshcopTLVType.PENDINGTIMESTAMP, bytes.fromhex("0000000000010000")
+    ),
+    MeshcopTLVType.DELAYTIMER: MeshcopTLVItem(
+        MeshcopTLVType.DELAYTIMER, bytes.fromhex("00001388")
+    ),
+    MeshcopTLVType.COUNT: MeshcopTLVItem(
+        MeshcopTLVType.COUNT, bytes.fromhex("03")
+    ),
+    MeshcopTLVType.PERIOD: MeshcopTLVItem(
+        MeshcopTLVType.PERIOD, bytes.fromhex("0032")
+    ),
+    MeshcopTLVType.SCAN_DURATION: MeshcopTLVItem(
+        MeshcopTLVType.SCAN_DURATION, bytes.fromhex("04")
+    ),
+    MeshcopTLVType.ENERGY_LIST: MeshcopTLVItem(
+        MeshcopTLVType.ENERGY_LIST, bytes.fromhex("010203")
+    ),
+    MeshcopTLVType.THREAD_DOMAIN_NAME: MeshcopTLVItem(
+        MeshcopTLVType.THREAD_DOMAIN_NAME, "home".encode()
+    ),
+    MeshcopTLVType.DISCOVERYREQUEST: MeshcopTLVItem(
+        MeshcopTLVType.DISCOVERYREQUEST, bytes.fromhex("00")
+    ),
+    MeshcopTLVType.DISCOVERYRESPONSE: MeshcopTLVItem(
+        MeshcopTLVType.DISCOVERYRESPONSE, bytes.fromhex("01")
+    ),
+    MeshcopTLVType.JOINERADVERTISEMENT: MeshcopTLVItem(
+        MeshcopTLVType.JOINERADVERTISEMENT, bytes.fromhex("02")
+    ),
+}
+
+# Expected TLV hex for NEW_MESHCOP_DATASET; order follows the dict insertion order.
+NEW_MESHCOP_DATASET_HEX = (
+    "170105200474657374210441434d453002beef311020010db8000000000000000000000001"
+    "330800000000000100003404000013883601033702003238010439030102033b04686f6d65"
+    "800100810101f10102"
+)
+
+
 def test_encode_tlv() -> None:
     """Test the TLV parser."""
     dataset = {
@@ -58,6 +116,9 @@ def test_encode_tlv() -> None:
         ).lower()
     )
 
+    encoded_new_types = encode_tlv(NEW_MESHCOP_DATASET)
+    assert encoded_new_types == NEW_MESHCOP_DATASET_HEX
+
 
 def test_parse_tlv() -> None:
     """Test the TLV parser."""
@@ -99,6 +160,9 @@ def test_parse_tlv() -> None:
             MeshcopTLVType.CHANNELMASK, bytes.fromhex("0004001fffe0")
         ),
     }
+
+    parsed_new_types = parse_tlv(NEW_MESHCOP_DATASET_HEX)
+    assert parsed_new_types == NEW_MESHCOP_DATASET
 
 
 def test_parse_tlv_with_wakeup_channel() -> None:
