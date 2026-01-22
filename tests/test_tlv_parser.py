@@ -38,12 +38,8 @@ NEW_MESHCOP_DATASET = {
     MeshcopTLVType.DELAYTIMER: MeshcopTLVItem(
         MeshcopTLVType.DELAYTIMER, bytes.fromhex("00001388")
     ),
-    MeshcopTLVType.COUNT: MeshcopTLVItem(
-        MeshcopTLVType.COUNT, bytes.fromhex("03")
-    ),
-    MeshcopTLVType.PERIOD: MeshcopTLVItem(
-        MeshcopTLVType.PERIOD, bytes.fromhex("0032")
-    ),
+    MeshcopTLVType.COUNT: MeshcopTLVItem(MeshcopTLVType.COUNT, bytes.fromhex("03")),
+    MeshcopTLVType.PERIOD: MeshcopTLVItem(MeshcopTLVType.PERIOD, bytes.fromhex("0032")),
     MeshcopTLVType.SCAN_DURATION: MeshcopTLVItem(
         MeshcopTLVType.SCAN_DURATION, bytes.fromhex("04")
     ),
