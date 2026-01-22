@@ -179,8 +179,8 @@ def test_parse_tlv_with_wakeup_channel() -> None:
         MeshcopTLVType.CHANNEL: Channel(
             MeshcopTLVType.CHANNEL, bytes.fromhex("000019")
         ),
-        MeshcopTLVType.WAKEUP_CHANNEL : MeshcopTLVItem(
-            MeshcopTLVType.WAKEUP_CHANNEL , bytes.fromhex("00000f")
+        MeshcopTLVType.WAKEUP_CHANNEL: MeshcopTLVItem(
+            MeshcopTLVType.WAKEUP_CHANNEL, bytes.fromhex("00000f")
         ),
         MeshcopTLVType.CHANNELMASK: MeshcopTLVItem(
             MeshcopTLVType.CHANNELMASK, bytes.fromhex("0004001fffc0")
