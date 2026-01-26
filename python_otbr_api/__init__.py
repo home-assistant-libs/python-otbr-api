@@ -5,7 +5,7 @@ from http import HTTPStatus
 import json
 
 import aiohttp
-import voluptuous as vol  # type:ignore[import]
+import voluptuous as vol  # type: ignore[import]
 
 from .models import ActiveDataSet, PendingDataSet, Timestamp
 

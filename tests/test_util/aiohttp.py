@@ -14,7 +14,6 @@ from aiohttp.streams import StreamReader
 from multidict import CIMultiDict
 from yarl import URL
 
-
 RETYPE = type(re.compile(""))
 
 # pylint: disable=unused-argument, too-many-arguments, too-many-instance-attributes
