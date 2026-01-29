@@ -47,6 +47,7 @@ def test_encode_tlv() -> None:
         MeshcopTLVType.SECURITYPOLICY: MeshcopTLVItem(
             MeshcopTLVType.SECURITYPOLICY, bytes.fromhex("02a0f7f8")
         ),
+        189: MeshcopTLVItem(189, bytes.fromhex("abcdef")),
     }
     dataset_tlv = encode_tlv(dataset)
     assert (
@@ -54,7 +55,7 @@ def test_encode_tlv() -> None:
         == (
             "0E080000000000010000000300000F35060004001FFFE0020811111111222222220708FDAD"
             "70BFE5AA15DD051000112233445566778899AABBCCDDEEFF030E4F70656E54687265616444"
-            "656D6F010212340410445F2B5CA6F2A93A55CE570A70EFEECB0C0402A0F7F8"
+            "656D6F010212340410445F2B5CA6F2A93A55CE570A70EFEECB0C0402A0F7F8BD03ABCDEF"
         ).lower()
     )
 
@@ -64,7 +65,7 @@ def test_parse_tlv() -> None:
     dataset_tlv = (
         "0E080000000000010000000300000F35060004001FFFE0020811111111222222220708FDAD70BF"
         "E5AA15DD051000112233445566778899AABBCCDDEEFF030E4F70656E54687265616444656D6F01"
-        "0212340410445F2B5CA6F2A93A55CE570A70EFEECB0C0402A0F7F8"
+        "0212340410445F2B5CA6F2A93A55CE570A70EFEECB0C0402A0F7F8BD03ABCDEF"
     )
     dataset = parse_tlv(dataset_tlv)
     assert dataset == {
@@ -98,6 +99,7 @@ def test_parse_tlv() -> None:
         MeshcopTLVType.CHANNELMASK: MeshcopTLVItem(
             MeshcopTLVType.CHANNELMASK, bytes.fromhex("0004001fffe0")
         ),
+        189: MeshcopTLVItem(189, bytes.fromhex("abcdef")),
     }
 
 
@@ -138,12 +140,17 @@ def test_parse_tlv_apple() -> None:
         (
             "FF",
             TLVError,
-            "unknown type 255",
+            "truncated tlv header",
+        ),
+        (
+            "FF01",
+            TLVError,
+            "expected 1 bytes for tag 255, got 0",
         ),
         (
             "030E4F70656E54687265616444656D",
             TLVError,
-            "expected 14 bytes for NETWORKNAME, got 13",
+            "expected 14 bytes for tag <MeshcopTLVType.NETWORKNAME: 3>, got 13",
         ),
         (
             "030E4F70656E54687265616444656DFF",
