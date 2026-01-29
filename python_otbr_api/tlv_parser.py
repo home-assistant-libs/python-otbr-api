@@ -194,7 +194,7 @@ def parse_tlv(data: str) -> dict[MeshcopTLVType | int, MeshcopTLVItem]:
         pos += _len
 
         # Once we have the value, we can log a warning about the unknown TLV
-        if tag not in MeshcopTLVType:
+        if not isinstance(tag, MeshcopTLVType):
             _LOGGER.warning("unknown TLV type %d=%r", raw_tag, val)
 
         if tag in result:
