@@ -181,7 +181,7 @@ def parse_tlv(data: str) -> dict[MeshcopTLVType | int, MeshcopTLVItem]:
 
         try:
             tag = MeshcopTLVType(raw_tag)
-        except ValueError as err:
+        except ValueError:
             tag = raw_tag
 
         _len = data_bytes[pos]
