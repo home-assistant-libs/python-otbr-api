@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import IntEnum
 import struct
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class TLVError(Exception):
@@ -124,7 +127,7 @@ def _encode_item(item: MeshcopTLVItem) -> bytes:
     return struct.pack(f"!BB{data_len}s", item.tag, data_len, item.data)
 
 
-def encode_tlv(items: dict[MeshcopTLVType, MeshcopTLVItem]) -> str:
+def encode_tlv(items: dict[MeshcopTLVType | int, MeshcopTLVItem]) -> str:
     """Encode a TLV encoded dataset to a hex string.
 
     Raises if the TLV is invalid.
@@ -137,7 +140,7 @@ def encode_tlv(items: dict[MeshcopTLVType, MeshcopTLVItem]) -> str:
     return result.hex()
 
 
-def _parse_item(tag: MeshcopTLVType, data: bytes) -> MeshcopTLVItem:
+def _parse_item(tag: MeshcopTLVType | int, data: bytes) -> MeshcopTLVItem:
     """Parse a TLV encoded dataset item."""
     if tag == MeshcopTLVType.ACTIVETIMESTAMP:
         return Timestamp(tag, data)
@@ -149,7 +152,7 @@ def _parse_item(tag: MeshcopTLVType, data: bytes) -> MeshcopTLVItem:
     return MeshcopTLVItem(tag, data)
 
 
-def parse_tlv(data: str) -> dict[MeshcopTLVType, MeshcopTLVItem]:
+def parse_tlv(data: str) -> dict[MeshcopTLVType | int, MeshcopTLVItem]:
     """Parse a TLV encoded dataset.
 
     Raises if the TLV is invalid.
@@ -160,19 +163,37 @@ def parse_tlv(data: str) -> dict[MeshcopTLVType, MeshcopTLVItem]:
         raise TLVError("invalid tlvs") from err
     result = {}
     pos = 0
-    while pos < len(data_bytes):
-        try:
-            tag = MeshcopTLVType(data_bytes[pos])
-        except ValueError as err:
-            raise TLVError(f"unknown type {data_bytes[pos]}") from err
+    length = len(data_bytes)
+
+    while pos < length:
+        if pos + 2 > length:
+            raise TLVError("truncated tlv header")
+
+        raw_tag = data_bytes[pos]
         pos += 1
+
+        # Unknown tags should still be passed through
+        tag: MeshcopTLVType | int
+
+        try:
+            tag = MeshcopTLVType(raw_tag)
+        except ValueError:
+            tag = raw_tag
+
         _len = data_bytes[pos]
         pos += 1
+
+        if pos + _len > length:
+            raise TLVError(f"expected {_len} bytes for tag {tag!r}, got {length - pos}")
+
         val = data_bytes[pos : pos + _len]
-        if len(val) < _len:
-            raise TLVError(f"expected {_len} bytes for {tag.name}, got {len(val)}")
         pos += _len
+
+        # Once we have the value, we can log a warning about the unknown TLV
+        if not isinstance(tag, MeshcopTLVType):
+            _LOGGER.warning("unknown TLV type %d=%r", raw_tag, val)
+
         if tag in result:
-            raise TLVError(f"duplicated tag {tag.name}")
+            raise TLVError(f"duplicated tag {tag!r}")
         result[tag] = _parse_item(tag, val)
     return result
