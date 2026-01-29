@@ -36,6 +36,7 @@ class MeshcopTLVType(IntEnum):
     JOINER_IID = 19
     JOINER_RLOC = 20
     JOINER_ROUTER_KEK = 21
+    DURATION = 23
     PROVISIONING_URL = 32
     VENDOR_NAME_TLV = 33
     VENDOR_MODEL_TLV = 34
@@ -51,8 +52,8 @@ class MeshcopTLVType(IntEnum):
     PERIOD = 55
     SCAN_DURATION = 56
     ENERGY_LIST = 57
-    # Seen in a dataset imported through iOS companion app
-    APPLE_TAG_UNKNOWN = 74
+    THREAD_DOMAIN_NAME = 59
+    WAKEUP_CHANNEL = 74
     DISCOVERYREQUEST = 128
     DISCOVERYRESPONSE = 129
     JOINERADVERTISEMENT = 241
