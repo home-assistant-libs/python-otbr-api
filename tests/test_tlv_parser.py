@@ -13,9 +13,8 @@ from python_otbr_api.tlv_parser import (
     parse_tlv,
 )
 
-
 # Shared dataset covering the newly added Meshcop TLV types.
-NEW_MESHCOP_DATASET = {
+NEW_MESHCOP_DATASET: dict[MeshcopTLVType | int, MeshcopTLVItem] = {
     MeshcopTLVType.DURATION: MeshcopTLVItem(
         MeshcopTLVType.DURATION, bytes.fromhex("05")
     ),
