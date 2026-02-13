@@ -7,6 +7,56 @@ from typing import Any
 
 import voluptuous as vol  # type: ignore[import]
 
+# The OTBR REST API uses camelCase keys (per the OpenAPI spec in ot-br-posix),
+# but this library historically expected PascalCase. This mapping normalizes
+# camelCase keys to PascalCase so both formats are accepted.
+_CAMEL_TO_PASCAL: dict[str, str] = {
+    # Timestamp
+    "authoritative": "Authoritative",
+    "seconds": "Seconds",
+    "ticks": "Ticks",
+    # SecurityPolicy
+    "autonomousEnrollment": "AutonomousEnrollment",
+    "commercialCommissioning": "CommercialCommissioning",
+    "externalCommissioning": "ExternalCommissioning",
+    "nativeCommissioning": "NativeCommissioning",
+    "networkKeyProvisioning": "NetworkKeyProvisioning",
+    "nonCcmRouters": "NonCcmRouters",
+    "obtainNetworkKey": "ObtainNetworkKey",
+    "rotationTime": "RotationTime",
+    "tobleLink": "TobleLink",
+    # ActiveDataSet
+    "activeTimestamp": "ActiveTimestamp",
+    "channelMask": "ChannelMask",
+    "channel": "Channel",
+    "extPanId": "ExtPanId",
+    "meshLocalPrefix": "MeshLocalPrefix",
+    "networkKey": "NetworkKey",
+    "networkName": "NetworkName",
+    "panId": "PanId",
+    "pskc": "PSKc",
+    "securityPolicy": "SecurityPolicy",
+    # PendingDataSet
+    "activeDataset": "ActiveDataset",
+    "delay": "Delay",
+    "pendingTimestamp": "PendingTimestamp",
+}
+
+
+def _normalize_keys(data: Any) -> Any:
+    """Normalize camelCase JSON keys to PascalCase.
+
+    The OTBR REST API returns camelCase keys, but the schemas in this module
+    expect PascalCase. This function converts known camelCase keys so that both
+    formats are accepted. Unknown keys and non-dict values pass through unchanged.
+    """
+    if not isinstance(data, dict):
+        return data
+    return {
+        _CAMEL_TO_PASCAL.get(k, k): (_normalize_keys(v) if isinstance(v, dict) else v)
+        for k, v in data.items()
+    }
+
 
 @dataclass
 class Timestamp:
@@ -38,6 +88,7 @@ class Timestamp:
     @classmethod
     def from_json(cls, json_data: Any) -> Timestamp:
         """Deserialize from JSON."""
+        json_data = _normalize_keys(json_data)
         cls.SCHEMA(json_data)
         return cls(
             json_data.get("Authoritative"),
@@ -104,6 +155,7 @@ class SecurityPolicy:  # pylint: disable=too-many-instance-attributes
     @classmethod
     def from_json(cls, json_data: Any) -> SecurityPolicy:
         """Deserialize from JSON."""
+        json_data = _normalize_keys(json_data)
         cls.SCHEMA(json_data)
         return cls(
             json_data.get("AutonomousEnrollment"),
@@ -177,6 +229,7 @@ class ActiveDataSet:  # pylint: disable=too-many-instance-attributes
     @classmethod
     def from_json(cls, json_data: Any) -> ActiveDataSet:
         """Deserialize from JSON."""
+        json_data = _normalize_keys(json_data)
         cls.SCHEMA(json_data)
         active_timestamp = None
         security_policy = None
@@ -229,6 +282,7 @@ class PendingDataSet:  # pylint: disable=too-many-instance-attributes
     @classmethod
     def from_json(cls, json_data: Any) -> PendingDataSet:
         """Deserialize from JSON."""
+        json_data = _normalize_keys(json_data)
         cls.SCHEMA(json_data)
         active_dataset = None
         pending_timestamp = None
