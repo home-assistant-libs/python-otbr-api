@@ -24,6 +24,7 @@ _CAMEL_TO_PASCAL: dict[str, str] = {
     "nonCcmRouters": "NonCcmRouters",
     "obtainNetworkKey": "ObtainNetworkKey",
     "rotationTime": "RotationTime",
+    "routers": "Routers",
     "tobleLink": "TobleLink",
     # ActiveDataSet
     "activeTimestamp": "ActiveTimestamp",

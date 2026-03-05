@@ -35,7 +35,7 @@ def test_deserialize_active_dataset_camelcase():
             "securityPolicy": {
                 "rotationTime": 672,
                 "obtainNetworkKey": True,
-                "Routers": True,
+                "routers": True,
             },
             "channelMask": 134215680,
         }
