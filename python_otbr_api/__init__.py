@@ -291,3 +291,26 @@ class OTBR:  # pylint: disable=too-few-public-methods
             return await response.json()
         except ValueError as exc:
             raise OTBRError("unexpected API response") from exc
+
+    async def get_diagnostics(self) -> dict | None:
+        """Get diagnostics collection.
+
+        Returns None if there is no diagnostics data.
+        Raises if the http status is 400 or higher or if the response is invalid.
+        """
+        response = await self._session.get(
+            f"{self._url}/diagnostics",
+            headers={"Accept": "application/json"},
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status == HTTPStatus.NO_CONTENT:
+            return None
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+        try:
+            return await response.json()
+        except ValueError as exc:
+            raise OTBRError("unexpected API response") from exc

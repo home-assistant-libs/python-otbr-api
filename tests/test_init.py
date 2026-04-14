@@ -2,6 +2,7 @@
 
 from http import HTTPStatus
 from typing import Any
+import secrets
 
 import pytest
 import python_otbr_api
@@ -665,3 +666,68 @@ async def test_get_coprocessor_version_invalid(aioclient_mock: AiohttpClientMock
 
     with pytest.raises(python_otbr_api.OTBRError):
         await otbr.get_coprocessor_version()
+
+
+async def test_get_diagnostics(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test get_diagnostics."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    # Generate a random ExtAddress (64-bit MAC address in hex format)
+    random_ext_address = secrets.token_hex(8).upper()
+
+    mock_response = [
+        {
+            "ExtAddress": random_ext_address,
+            "Rloc16": 58368,
+            "Mode": {
+                "RxOnWhenIdle": 1,
+                "DeviceType": 1,
+                "NetworkData": 1,
+            },
+            "Connectivity": {
+                "ParentPriority": 0,
+                "LinkQuality3": 5,
+                "LinkQuality2": 2,
+                "LinkQuality1": 2,
+                "LeaderCost": 2,
+                "IdSequence": 40,
+                "ActiveRouters": 10,
+                "SedBufferSize": 1280,
+                "SedDatagramCount": 1,
+            },
+            "MACCounters": {
+                "IfInUnknownProtos": 0,
+                "IfInErrors": 27769,
+                "IfOutErrors": 163,
+            },
+            "IP6AddressList": [
+                "fd00:db8:a0::ff:fe00:e400",
+                "fe80::70b3:de9b:6e97:70d2",
+            ],
+        }
+    ]
+
+    aioclient_mock.get(f"{BASE_URL}/diagnostics", json=mock_response)
+
+    result = await otbr.get_diagnostics()
+    assert result == mock_response
+
+
+async def test_get_diagnostics_no_content(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test get_diagnostics with no content."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.get(f"{BASE_URL}/diagnostics", status=HTTPStatus.NO_CONTENT)
+
+    result = await otbr.get_diagnostics()
+    assert result is None
+
+
+async def test_get_diagnostics_error(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test get_diagnostics with error."""
+    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+
+    aioclient_mock.get(f"{BASE_URL}/diagnostics", status=HTTPStatus.NOT_FOUND)
+
+    with pytest.raises(python_otbr_api.OTBRError):
+        await otbr.get_diagnostics()
