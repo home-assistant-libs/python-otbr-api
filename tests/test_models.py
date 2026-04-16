@@ -69,8 +69,14 @@ def test_deserialize_pending_dataset_camelcase():
     )
 
 
-def test_serialize_active_dataset_camelcase():
-    """Test that as_json() emits camelCase keys matching the OTBR REST API."""
+def test_serialize_active_dataset_dual_keys():
+    """Test that as_json() emits both PascalCase and camelCase keys.
+
+    ot-br-posix's REST API parses incoming payloads case-sensitively but
+    silently ignores unknown keys. Emitting both capitalizations keeps the
+    library compatible with both older routers (PascalCase) and newer ones
+    (camelCase, per the OpenAPI spec).
+    """
     dataset = python_otbr_api.ActiveDataSet(
         active_timestamp=python_otbr_api.Timestamp(
             authoritative=False, seconds=1, ticks=0
@@ -88,39 +94,60 @@ def test_serialize_active_dataset_camelcase():
         channel_mask=134215680,
     )
     result = dataset.as_json()
-    # All top-level keys must be camelCase
-    assert "activeTimestamp" in result
-    assert "networkKey" in result
-    assert "networkName" in result
-    assert "extPanId" in result
-    assert "meshLocalPrefix" in result
-    assert "panId" in result
-    assert "channel" in result
-    assert "pskc" in result
-    assert "securityPolicy" in result
-    assert "channelMask" in result
-    # Nested keys must also be camelCase
-    assert "seconds" in result["activeTimestamp"]
-    assert "rotationTime" in result["securityPolicy"]
-    assert "obtainNetworkKey" in result["securityPolicy"]
+    # Top-level keys must be present in BOTH capitalizations.
+    for camel, pascal in (
+        ("activeTimestamp", "ActiveTimestamp"),
+        ("networkKey", "NetworkKey"),
+        ("networkName", "NetworkName"),
+        ("extPanId", "ExtPanId"),
+        ("meshLocalPrefix", "MeshLocalPrefix"),
+        ("panId", "PanId"),
+        ("channel", "Channel"),
+        ("pskc", "PSKc"),
+        ("securityPolicy", "SecurityPolicy"),
+        ("channelMask", "ChannelMask"),
+    ):
+        assert camel in result, f"missing camelCase key {camel}"
+        assert pascal in result, f"missing PascalCase key {pascal}"
+        assert result[camel] == result[pascal]
+    # Nested dicts must also expose both capitalizations.
+    for camel, pascal in (("seconds", "Seconds"), ("ticks", "Ticks")):
+        assert camel in result["activeTimestamp"]
+        assert pascal in result["activeTimestamp"]
+    for camel, pascal in (
+        ("rotationTime", "RotationTime"),
+        ("obtainNetworkKey", "ObtainNetworkKey"),
+        ("routers", "Routers"),
+    ):
+        assert camel in result["securityPolicy"]
+        assert pascal in result["securityPolicy"]
 
 
-def test_serialize_pending_dataset_camelcase():
-    """Test that PendingDataSet.as_json() emits camelCase keys."""
+def test_serialize_pending_dataset_dual_keys():
+    """Test that PendingDataSet.as_json() emits both capitalizations."""
     pending = python_otbr_api.PendingDataSet(
         active_dataset=python_otbr_api.ActiveDataSet(network_name="OpenThread HA"),
         delay=30000,
         pending_timestamp=python_otbr_api.Timestamp(seconds=2, ticks=0),
     )
     result = pending.as_json()
-    assert "activeDataset" in result
-    assert "delay" in result
-    assert "pendingTimestamp" in result
+    for camel, pascal in (
+        ("activeDataset", "ActiveDataset"),
+        ("delay", "Delay"),
+        ("pendingTimestamp", "PendingTimestamp"),
+    ):
+        assert camel in result
+        assert pascal in result
     assert "networkName" in result["activeDataset"]
+    assert "NetworkName" in result["activeDataset"]
 
 
-def test_roundtrip_camelcase():
-    """Test that from_json(as_json(x)) preserves data."""
+def test_roundtrip_dual_keys():
+    """Test that from_json(as_json(x)) preserves data.
+
+    from_json() must cope with dual-key input (both PascalCase and camelCase
+    present at once), which is what as_json() now emits.
+    """
     original = python_otbr_api.ActiveDataSet(
         network_name="Test", channel=15, pan_id=4660
     )

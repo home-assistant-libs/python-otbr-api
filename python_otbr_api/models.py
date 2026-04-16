@@ -62,19 +62,25 @@ def _normalize_keys(data: Any) -> Any:
     }
 
 
-def _to_camel_keys(data: dict) -> dict:
-    """Convert PascalCase JSON keys to camelCase for serialization.
+def _to_dual_keys(data: dict) -> dict:
+    """Emit both PascalCase and camelCase variants for known keys.
 
-    The OTBR REST API expects camelCase keys (per the OpenAPI spec in
-    ot-br-posix). This function converts the internal PascalCase keys to
-    camelCase. Unknown keys and non-dict values pass through unchanged.
+    Recent ot-br-posix versions switched the REST API to camelCase (per the
+    OpenAPI spec), but older versions still expect PascalCase. Both versions
+    parse incoming payloads case-sensitively and silently ignore unknown keys,
+    so we emit both capitalization formats for every known key. This keeps the
+    library compatible with both old and new border routers.
+
+    Recursion is not needed: nested dicts come from nested ``as_json()`` calls
+    that already return dual-key dicts.
     """
-    return {
-        _PASCAL_TO_CAMEL.get(k, k): (
-            _to_camel_keys(v) if isinstance(v, dict) else v
-        )
-        for k, v in data.items()
-    }
+    result: dict = {}
+    for k, v in data.items():
+        result[k] = v
+        other = _PASCAL_TO_CAMEL.get(k) or _CAMEL_TO_PASCAL.get(k)
+        if other is not None and other != k:
+            result[other] = v
+    return result
 
 
 @dataclass
@@ -102,7 +108,7 @@ class Timestamp:
             result["Seconds"] = self.seconds
         if self.ticks is not None:
             result["Ticks"] = self.ticks
-        return _to_camel_keys(result)
+        return _to_dual_keys(result)
 
     @classmethod
     def from_json(cls, json_data: Any) -> Timestamp:
@@ -169,7 +175,7 @@ class SecurityPolicy:  # pylint: disable=too-many-instance-attributes
             result["Routers"] = self.routers
         if self.to_ble_link is not None:
             result["TobleLink"] = self.to_ble_link
-        return _to_camel_keys(result)
+        return _to_dual_keys(result)
 
     @classmethod
     def from_json(cls, json_data: Any) -> SecurityPolicy:
@@ -243,7 +249,7 @@ class ActiveDataSet:  # pylint: disable=too-many-instance-attributes
             result["PSKc"] = self.psk_c
         if self.security_policy is not None:
             result["SecurityPolicy"] = self.security_policy.as_json()
-        return _to_camel_keys(result)
+        return _to_dual_keys(result)
 
     @classmethod
     def from_json(cls, json_data: Any) -> ActiveDataSet:
@@ -296,7 +302,7 @@ class PendingDataSet:  # pylint: disable=too-many-instance-attributes
             result["Delay"] = self.delay
         if self.pending_timestamp is not None:
             result["PendingTimestamp"] = self.pending_timestamp.as_json()
-        return _to_camel_keys(result)
+        return _to_dual_keys(result)
 
     @classmethod
     def from_json(cls, json_data: Any) -> PendingDataSet:

@@ -5,8 +5,19 @@ from typing import Any
 
 import pytest
 import python_otbr_api
+from python_otbr_api.models import _to_dual_keys
 
 from tests.test_util.aiohttp import AiohttpClientMocker
+
+
+def _dual(data: dict) -> dict:
+    """Expand a camelCase payload to the dual-key format emitted by as_json()."""
+    result = _to_dual_keys(data)
+    for key in list(result):
+        if isinstance(result[key], dict):
+            result[key] = _dual(result[key])
+    return result
+
 
 BASE_URL = "http://core-silabs-multiprotocol:8081"
 DATASET_JSON: dict[str, Any] = {
@@ -170,31 +181,34 @@ async def test_get_active_dataset(aioclient_mock: AiohttpClientMocker):
         DATASET_JSON["PSKc"],
         security_policy,
     )
-    # as_json() now emits camelCase keys matching the OTBR REST API spec
-    camel_dataset = {
-        "activeTimestamp": {"authoritative": False, "seconds": 1, "ticks": 0},
-        "channelMask": 134215680,
-        "channel": 15,
-        "extPanId": "8478E3379E047B92",
-        "meshLocalPrefix": "fd89:bde7:42ed:a901::/64",
-        "networkKey": "96271D6ECC78749114AB6A591E0D06F1",
-        "networkName": "OpenThread HA",
-        "panId": 33991,
-        "pskc": "9760C89414D461AC717DCD105EB87E5B",
-        "securityPolicy": {
-            "autonomousEnrollment": False,
-            "commercialCommissioning": False,
-            "externalCommissioning": True,
-            "nativeCommissioning": True,
-            "networkKeyProvisioning": False,
-            "nonCcmRouters": False,
-            "obtainNetworkKey": True,
-            "rotationTime": 672,
-            "routers": True,
-            "tobleLink": True,
-        },
-    }
-    assert active_dataset.as_json() == camel_dataset
+    # as_json() emits both PascalCase and camelCase keys for compatibility with
+    # both older and newer ot-br-posix REST API versions.
+    expected = _dual(
+        {
+            "activeTimestamp": {"authoritative": False, "seconds": 1, "ticks": 0},
+            "channelMask": 134215680,
+            "channel": 15,
+            "extPanId": "8478E3379E047B92",
+            "meshLocalPrefix": "fd89:bde7:42ed:a901::/64",
+            "networkKey": "96271D6ECC78749114AB6A591E0D06F1",
+            "networkName": "OpenThread HA",
+            "panId": 33991,
+            "pskc": "9760C89414D461AC717DCD105EB87E5B",
+            "securityPolicy": {
+                "autonomousEnrollment": False,
+                "commercialCommissioning": False,
+                "externalCommissioning": True,
+                "nativeCommissioning": True,
+                "networkKeyProvisioning": False,
+                "nonCcmRouters": False,
+                "obtainNetworkKey": True,
+                "rotationTime": 672,
+                "routers": True,
+                "tobleLink": True,
+            },
+        }
+    )
+    assert active_dataset.as_json() == expected
 
 
 async def test_get_active_dataset_empty(aioclient_mock: AiohttpClientMocker):
@@ -269,7 +283,7 @@ async def test_create_active_dataset(aioclient_mock: AiohttpClientMocker):
     assert aioclient_mock.call_count == 2
     assert aioclient_mock.mock_calls[-1][0] == "PUT"
     assert aioclient_mock.mock_calls[-1][1].path == "/node/dataset/active"
-    assert aioclient_mock.mock_calls[-1][2] == {"networkName": "OpenThread HA"}
+    assert aioclient_mock.mock_calls[-1][2] == _dual({"networkName": "OpenThread HA"})
 
     await otbr.create_active_dataset(
         python_otbr_api.ActiveDataSet(network_name="OpenThread HA", channel=15)
@@ -277,10 +291,12 @@ async def test_create_active_dataset(aioclient_mock: AiohttpClientMocker):
     assert aioclient_mock.call_count == 3
     assert aioclient_mock.mock_calls[-1][0] == "PUT"
     assert aioclient_mock.mock_calls[-1][1].path == "/node/dataset/active"
-    assert aioclient_mock.mock_calls[-1][2] == {
-        "networkName": "OpenThread HA",
-        "channel": 15,
-    }
+    assert aioclient_mock.mock_calls[-1][2] == _dual(
+        {
+            "networkName": "OpenThread HA",
+            "channel": 15,
+        }
+    )
 
 
 async def test_delete_active_dataset(aioclient_mock: AiohttpClientMocker):
@@ -318,13 +334,15 @@ async def test_create_pending_dataset(aioclient_mock: AiohttpClientMocker):
     assert aioclient_mock.call_count == 2
     assert aioclient_mock.mock_calls[-1][0] == "PUT"
     assert aioclient_mock.mock_calls[-1][1].path == "/node/dataset/pending"
-    assert aioclient_mock.mock_calls[-1][2] == {
-        "activeDataset": {
-            "networkName": "OpenThread HA",
-        },
-        "delay": 12345,
-        "pendingTimestamp": {},
-    }
+    assert aioclient_mock.mock_calls[-1][2] == _dual(
+        {
+            "activeDataset": {
+                "networkName": "OpenThread HA",
+            },
+            "delay": 12345,
+            "pendingTimestamp": {},
+        }
+    )
 
     await otbr.create_pending_dataset(
         python_otbr_api.PendingDataSet(
@@ -335,13 +353,15 @@ async def test_create_pending_dataset(aioclient_mock: AiohttpClientMocker):
     assert aioclient_mock.call_count == 3
     assert aioclient_mock.mock_calls[-1][0] == "PUT"
     assert aioclient_mock.mock_calls[-1][1].path == "/node/dataset/pending"
-    assert aioclient_mock.mock_calls[-1][2] == {
-        "activeDataset": {
-            "channel": 15,
-            "networkName": "OpenThread HA",
-        },
-        "delay": 23456,
-    }
+    assert aioclient_mock.mock_calls[-1][2] == _dual(
+        {
+            "activeDataset": {
+                "channel": 15,
+                "networkName": "OpenThread HA",
+            },
+            "delay": 23456,
+        }
+    )
 
 
 async def test_delete_pending_dataset(aioclient_mock: AiohttpClientMocker):
