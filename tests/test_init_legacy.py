@@ -189,6 +189,8 @@ async def test_get_active_dataset(aioclient_mock: AiohttpClientMocker):
         DATASET_JSON["PSKc"],
         security_policy,
     )
+
+
 async def test_get_active_dataset_empty(aioclient_mock: AiohttpClientMocker):
     """Test get_active_dataset."""
     otbr = python_otbr_api.OTBR(
