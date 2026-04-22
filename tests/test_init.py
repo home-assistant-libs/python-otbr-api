@@ -101,6 +101,7 @@ async def test_get_active_dataset_camel(aioclient_mock: AiohttpClientMocker) -> 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=DATASET_JSON_CAMEL)
 
     dataset = await otbr.get_active_dataset()
+    assert dataset is not None
     assert dataset.as_json() == DATASET_JSON_CAMEL
 
 
@@ -128,6 +129,8 @@ async def test_camel_read_with_pascal_straggler(
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=straggler_dataset)
 
     dataset = await otbr.get_active_dataset()
+    assert dataset is not None
+    assert dataset.security_policy is not None
     assert dataset.security_policy.routers is True
     assert dataset.as_json() == DATASET_JSON_CAMEL
 

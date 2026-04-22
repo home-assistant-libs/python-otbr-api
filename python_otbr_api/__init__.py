@@ -116,7 +116,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
         self._timeout = timeout
         self._key_format = key_format
 
-    async def detect_version(self) -> None:
+    async def detect_version(self) -> KeyFormat:
         """Probe the OTBR REST API to determine the JSON key format."""
         response = await self._session.get(
             f"{self._url}/api/actions",
