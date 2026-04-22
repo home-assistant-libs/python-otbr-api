@@ -1,4 +1,4 @@
-"""Test the OTBR REST API client."""
+"""Test the OTBR REST API client with an older OTBR instance."""
 
 from http import HTTPStatus
 from typing import Any
