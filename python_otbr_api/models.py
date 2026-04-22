@@ -7,57 +7,6 @@ from typing import Any
 
 import voluptuous as vol  # type: ignore[import]
 
-# The OTBR REST API uses camelCase keys (per the OpenAPI spec in ot-br-posix),
-# but this library historically expected PascalCase. This mapping normalizes
-# camelCase keys to PascalCase so both formats are accepted.
-_CAMEL_TO_PASCAL: dict[str, str] = {
-    # Timestamp
-    "authoritative": "Authoritative",
-    "seconds": "Seconds",
-    "ticks": "Ticks",
-    # SecurityPolicy
-    "autonomousEnrollment": "AutonomousEnrollment",
-    "commercialCommissioning": "CommercialCommissioning",
-    "externalCommissioning": "ExternalCommissioning",
-    "nativeCommissioning": "NativeCommissioning",
-    "networkKeyProvisioning": "NetworkKeyProvisioning",
-    "nonCcmRouters": "NonCcmRouters",
-    "obtainNetworkKey": "ObtainNetworkKey",
-    "rotationTime": "RotationTime",
-    "routers": "Routers",
-    "tobleLink": "TobleLink",
-    # ActiveDataSet
-    "activeTimestamp": "ActiveTimestamp",
-    "channelMask": "ChannelMask",
-    "channel": "Channel",
-    "extPanId": "ExtPanId",
-    "meshLocalPrefix": "MeshLocalPrefix",
-    "networkKey": "NetworkKey",
-    "networkName": "NetworkName",
-    "panId": "PanId",
-    "pskc": "PSKc",
-    "securityPolicy": "SecurityPolicy",
-    # PendingDataSet
-    "activeDataset": "ActiveDataset",
-    "delay": "Delay",
-    "pendingTimestamp": "PendingTimestamp",
-}
-
-
-def _normalize_keys(data: Any) -> Any:
-    """Normalize camelCase JSON keys to PascalCase.
-
-    The OTBR REST API returns camelCase keys, but the schemas in this module
-    expect PascalCase. This function converts known camelCase keys so that both
-    formats are accepted. Unknown keys and non-dict values pass through unchanged.
-    """
-    if not isinstance(data, dict):
-        return data
-    return {
-        _CAMEL_TO_PASCAL.get(k, k): (_normalize_keys(v) if isinstance(v, dict) else v)
-        for k, v in data.items()
-    }
-
 
 @dataclass
 class Timestamp:
@@ -65,9 +14,9 @@ class Timestamp:
 
     SCHEMA = vol.Schema(
         {
-            vol.Optional("Authoritative"): bool,
-            vol.Optional("Seconds"): int,
-            vol.Optional("Ticks"): int,
+            vol.Optional("authoritative"): bool,
+            vol.Optional("seconds"): int,
+            vol.Optional("ticks"): int,
         }
     )
 
@@ -79,22 +28,21 @@ class Timestamp:
         """Serialize to JSON."""
         result: dict[str, Any] = {}
         if self.authoritative is not None:
-            result["Authoritative"] = self.authoritative
+            result["authoritative"] = self.authoritative
         if self.seconds is not None:
-            result["Seconds"] = self.seconds
+            result["seconds"] = self.seconds
         if self.ticks is not None:
-            result["Ticks"] = self.ticks
+            result["ticks"] = self.ticks
         return result
 
     @classmethod
     def from_json(cls, json_data: Any) -> Timestamp:
         """Deserialize from JSON."""
-        json_data = _normalize_keys(json_data)
         cls.SCHEMA(json_data)
         return cls(
-            json_data.get("Authoritative"),
-            json_data.get("Seconds"),
-            json_data.get("Ticks"),
+            json_data.get("authoritative"),
+            json_data.get("seconds"),
+            json_data.get("ticks"),
         )
 
 
@@ -104,16 +52,16 @@ class SecurityPolicy:  # pylint: disable=too-many-instance-attributes
 
     SCHEMA = vol.Schema(
         {
-            vol.Optional("AutonomousEnrollment"): bool,
-            vol.Optional("CommercialCommissioning"): bool,
-            vol.Optional("ExternalCommissioning"): bool,
-            vol.Optional("NativeCommissioning"): bool,
-            vol.Optional("NetworkKeyProvisioning"): bool,
-            vol.Optional("NonCcmRouters"): bool,
-            vol.Optional("ObtainNetworkKey"): bool,
-            vol.Optional("RotationTime"): int,
-            vol.Optional("Routers"): bool,
-            vol.Optional("TobleLink"): bool,
+            vol.Optional("autonomousEnrollment"): bool,
+            vol.Optional("commercialCommissioning"): bool,
+            vol.Optional("externalCommissioning"): bool,
+            vol.Optional("nativeCommissioning"): bool,
+            vol.Optional("networkKeyProvisioning"): bool,
+            vol.Optional("nonCcmRouters"): bool,
+            vol.Optional("obtainNetworkKey"): bool,
+            vol.Optional("rotationTime"): int,
+            vol.Optional("routers"): bool,
+            vol.Optional("tobleLink"): bool,
         }
     )
 
@@ -132,43 +80,42 @@ class SecurityPolicy:  # pylint: disable=too-many-instance-attributes
         """Serialize to JSON."""
         result: dict[str, Any] = {}
         if self.autonomous_enrollment is not None:
-            result["AutonomousEnrollment"] = self.autonomous_enrollment
+            result["autonomousEnrollment"] = self.autonomous_enrollment
         if self.commercial_commissioning is not None:
-            result["CommercialCommissioning"] = self.commercial_commissioning
+            result["commercialCommissioning"] = self.commercial_commissioning
         if self.external_commissioning is not None:
-            result["ExternalCommissioning"] = self.external_commissioning
+            result["externalCommissioning"] = self.external_commissioning
         if self.native_commissioning is not None:
-            result["NativeCommissioning"] = self.native_commissioning
+            result["nativeCommissioning"] = self.native_commissioning
         if self.network_key_provisioning is not None:
-            result["NetworkKeyProvisioning"] = self.network_key_provisioning
+            result["networkKeyProvisioning"] = self.network_key_provisioning
         if self.non_ccm_routers is not None:
-            result["NonCcmRouters"] = self.non_ccm_routers
+            result["nonCcmRouters"] = self.non_ccm_routers
         if self.obtain_network_key is not None:
-            result["ObtainNetworkKey"] = self.obtain_network_key
+            result["obtainNetworkKey"] = self.obtain_network_key
         if self.rotation_time is not None:
-            result["RotationTime"] = self.rotation_time
+            result["rotationTime"] = self.rotation_time
         if self.routers is not None:
-            result["Routers"] = self.routers
+            result["routers"] = self.routers
         if self.to_ble_link is not None:
-            result["TobleLink"] = self.to_ble_link
+            result["tobleLink"] = self.to_ble_link
         return result
 
     @classmethod
     def from_json(cls, json_data: Any) -> SecurityPolicy:
         """Deserialize from JSON."""
-        json_data = _normalize_keys(json_data)
         cls.SCHEMA(json_data)
         return cls(
-            json_data.get("AutonomousEnrollment"),
-            json_data.get("CommercialCommissioning"),
-            json_data.get("ExternalCommissioning"),
-            json_data.get("NativeCommissioning"),
-            json_data.get("NetworkKeyProvisioning"),
-            json_data.get("NonCcmRouters"),
-            json_data.get("ObtainNetworkKey"),
-            json_data.get("RotationTime"),
-            json_data.get("Routers"),
-            json_data.get("TobleLink"),
+            json_data.get("autonomousEnrollment"),
+            json_data.get("commercialCommissioning"),
+            json_data.get("externalCommissioning"),
+            json_data.get("nativeCommissioning"),
+            json_data.get("networkKeyProvisioning"),
+            json_data.get("nonCcmRouters"),
+            json_data.get("obtainNetworkKey"),
+            json_data.get("rotationTime"),
+            json_data.get("routers"),
+            json_data.get("tobleLink"),
         )
 
 
@@ -178,16 +125,16 @@ class ActiveDataSet:  # pylint: disable=too-many-instance-attributes
 
     SCHEMA = vol.Schema(
         {
-            vol.Optional("ActiveTimestamp"): dict,
-            vol.Optional("ChannelMask"): int,
-            vol.Optional("Channel"): int,
-            vol.Optional("ExtPanId"): str,
-            vol.Optional("MeshLocalPrefix"): str,
-            vol.Optional("NetworkKey"): str,
-            vol.Optional("NetworkName"): str,
-            vol.Optional("PanId"): int,
-            vol.Optional("PSKc"): str,
-            vol.Optional("SecurityPolicy"): dict,
+            vol.Optional("activeTimestamp"): dict,
+            vol.Optional("channelMask"): int,
+            vol.Optional("channel"): int,
+            vol.Optional("extPanId"): str,
+            vol.Optional("meshLocalPrefix"): str,
+            vol.Optional("networkKey"): str,
+            vol.Optional("networkName"): str,
+            vol.Optional("panId"): int,
+            vol.Optional("pskc"): str,
+            vol.Optional("securityPolicy"): dict,
         }
     )
 
@@ -206,49 +153,48 @@ class ActiveDataSet:  # pylint: disable=too-many-instance-attributes
         """Serialize to JSON."""
         result: dict[str, Any] = {}
         if self.active_timestamp is not None:
-            result["ActiveTimestamp"] = self.active_timestamp.as_json()
+            result["activeTimestamp"] = self.active_timestamp.as_json()
         if self.channel_mask is not None:
-            result["ChannelMask"] = self.channel_mask
+            result["channelMask"] = self.channel_mask
         if self.channel is not None:
-            result["Channel"] = self.channel
+            result["channel"] = self.channel
         if self.extended_pan_id is not None:
-            result["ExtPanId"] = self.extended_pan_id
+            result["extPanId"] = self.extended_pan_id
         if self.mesh_local_prefix is not None:
-            result["MeshLocalPrefix"] = self.mesh_local_prefix
+            result["meshLocalPrefix"] = self.mesh_local_prefix
         if self.network_key is not None:
-            result["NetworkKey"] = self.network_key
+            result["networkKey"] = self.network_key
         if self.network_name is not None:
-            result["NetworkName"] = self.network_name
+            result["networkName"] = self.network_name
         if self.pan_id is not None:
-            result["PanId"] = self.pan_id
+            result["panId"] = self.pan_id
         if self.psk_c is not None:
-            result["PSKc"] = self.psk_c
+            result["pskc"] = self.psk_c
         if self.security_policy is not None:
-            result["SecurityPolicy"] = self.security_policy.as_json()
+            result["securityPolicy"] = self.security_policy.as_json()
         return result
 
     @classmethod
     def from_json(cls, json_data: Any) -> ActiveDataSet:
         """Deserialize from JSON."""
-        json_data = _normalize_keys(json_data)
         cls.SCHEMA(json_data)
         active_timestamp = None
         security_policy = None
-        if "ActiveTimestamp" in json_data:
-            active_timestamp = Timestamp.from_json(json_data["ActiveTimestamp"])
-        if "SecurityPolicy" in json_data:
-            security_policy = SecurityPolicy.from_json(json_data["SecurityPolicy"])
+        if "activeTimestamp" in json_data:
+            active_timestamp = Timestamp.from_json(json_data["activeTimestamp"])
+        if "securityPolicy" in json_data:
+            security_policy = SecurityPolicy.from_json(json_data["securityPolicy"])
 
         return ActiveDataSet(
             active_timestamp,
-            json_data.get("ChannelMask"),
-            json_data.get("Channel"),
-            json_data.get("ExtPanId"),
-            json_data.get("MeshLocalPrefix"),
-            json_data.get("NetworkKey"),
-            json_data.get("NetworkName"),
-            json_data.get("PanId"),
-            json_data.get("PSKc"),
+            json_data.get("channelMask"),
+            json_data.get("channel"),
+            json_data.get("extPanId"),
+            json_data.get("meshLocalPrefix"),
+            json_data.get("networkKey"),
+            json_data.get("networkName"),
+            json_data.get("panId"),
+            json_data.get("pskc"),
             security_policy,
         )
 
@@ -259,9 +205,9 @@ class PendingDataSet:  # pylint: disable=too-many-instance-attributes
 
     SCHEMA = vol.Schema(
         {
-            vol.Optional("ActiveDataset"): dict,
-            vol.Optional("Delay"): int,
-            vol.Optional("PendingTimestamp"): dict,
+            vol.Optional("activeDataset"): dict,
+            vol.Optional("delay"): int,
+            vol.Optional("pendingTimestamp"): dict,
         }
     )
 
@@ -273,27 +219,26 @@ class PendingDataSet:  # pylint: disable=too-many-instance-attributes
         """Serialize to JSON."""
         result: dict[str, Any] = {}
         if self.active_dataset is not None:
-            result["ActiveDataset"] = self.active_dataset.as_json()
+            result["activeDataset"] = self.active_dataset.as_json()
         if self.delay is not None:
-            result["Delay"] = self.delay
+            result["delay"] = self.delay
         if self.pending_timestamp is not None:
-            result["PendingTimestamp"] = self.pending_timestamp.as_json()
+            result["pendingTimestamp"] = self.pending_timestamp.as_json()
         return result
 
     @classmethod
     def from_json(cls, json_data: Any) -> PendingDataSet:
         """Deserialize from JSON."""
-        json_data = _normalize_keys(json_data)
         cls.SCHEMA(json_data)
         active_dataset = None
         pending_timestamp = None
-        if "ActiveDataset" in json_data:
-            active_dataset = ActiveDataSet.from_json(json_data["ActiveDataset"])
-        if "PendingTimestamp" in json_data:
-            pending_timestamp = Timestamp.from_json(json_data["PendingTimestamp"])
+        if "activeDataset" in json_data:
+            active_dataset = ActiveDataSet.from_json(json_data["activeDataset"])
+        if "pendingTimestamp" in json_data:
+            pending_timestamp = Timestamp.from_json(json_data["pendingTimestamp"])
 
         return PendingDataSet(
             active_dataset,
-            json_data.get("Delay"),
+            json_data.get("delay"),
             pending_timestamp,
         )

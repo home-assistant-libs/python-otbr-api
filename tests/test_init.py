@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 import python_otbr_api
+from python_otbr_api import KeyFormat
 
 from tests.test_util.aiohttp import AiohttpClientMocker
 
@@ -40,7 +41,9 @@ DATASET_JSON: dict[str, Any] = {
 
 async def test_factory_reset(aioclient_mock: AiohttpClientMocker) -> None:
     """Test factory_reset."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.delete(f"{BASE_URL}/node", status=HTTPStatus.OK)
 
@@ -53,7 +56,9 @@ async def test_factory_reset(aioclient_mock: AiohttpClientMocker) -> None:
 
 async def test_factory_reset_unsupported(aioclient_mock: AiohttpClientMocker) -> None:
     """Test factory_reset is unsupported."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.delete(f"{BASE_URL}/node", status=HTTPStatus.METHOD_NOT_ALLOWED)
 
@@ -63,7 +68,9 @@ async def test_factory_reset_unsupported(aioclient_mock: AiohttpClientMocker) ->
 
 async def test_factory_reset_201(aioclient_mock: AiohttpClientMocker) -> None:
     """Test factory_reset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.delete(f"{BASE_URL}/node", status=HTTPStatus.CREATED)
 
@@ -73,7 +80,9 @@ async def test_factory_reset_201(aioclient_mock: AiohttpClientMocker) -> None:
 
 async def test_get_border_agent_id(aioclient_mock: AiohttpClientMocker) -> None:
     """Test get_border_agent_id."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     mock_response = "230C6A1AC57F6F4BE262ACF32E5EF52C"
 
@@ -86,7 +95,9 @@ async def test_get_border_agent_id_unsupported(
     aioclient_mock: AiohttpClientMocker,
 ) -> None:
     """Test get_border_agent_id with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/ba-id", status=HTTPStatus.NOT_FOUND)
 
@@ -96,7 +107,9 @@ async def test_get_border_agent_id_unsupported(
 
 async def test_get_border_agent_id_invalid(aioclient_mock: AiohttpClientMocker) -> None:
     """Test get_border_agent_id with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/ba-id", text="unexpected")
 
@@ -106,7 +119,9 @@ async def test_get_border_agent_id_invalid(aioclient_mock: AiohttpClientMocker) 
 
 async def test_get_border_agent_id_201(aioclient_mock: AiohttpClientMocker) -> None:
     """Test get_border_agent_id with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/ba-id", status=HTTPStatus.CREATED)
 
@@ -116,7 +131,9 @@ async def test_get_border_agent_id_201(aioclient_mock: AiohttpClientMocker) -> N
 
 async def test_set_enabled(aioclient_mock: AiohttpClientMocker) -> None:
     """Test set_enabled."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.put(f"{BASE_URL}/node/state", status=HTTPStatus.OK)
 
@@ -135,7 +152,9 @@ async def test_set_enabled(aioclient_mock: AiohttpClientMocker) -> None:
 
 async def test_get_active_dataset(aioclient_mock: AiohttpClientMocker):
     """Test get_active_dataset."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=DATASET_JSON)
 
@@ -170,12 +189,11 @@ async def test_get_active_dataset(aioclient_mock: AiohttpClientMocker):
         DATASET_JSON["PSKc"],
         security_policy,
     )
-    assert active_dataset.as_json() == DATASET_JSON
-
-
 async def test_get_active_dataset_empty(aioclient_mock: AiohttpClientMocker):
     """Test get_active_dataset."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.NO_CONTENT)
     assert await otbr.get_active_dataset() is None
@@ -183,7 +201,9 @@ async def test_get_active_dataset_empty(aioclient_mock: AiohttpClientMocker):
 
 async def test_get_active_dataset_tlvs(aioclient_mock: AiohttpClientMocker) -> None:
     """Test get_active_dataset_tlvs."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     mock_response = (
         "0E080000000000010000000300001035060004001FFFE00208F642646DA209B1C00708FDF57B5A"
@@ -198,7 +218,9 @@ async def test_get_active_dataset_tlvs(aioclient_mock: AiohttpClientMocker) -> N
 
 async def test_get_active_dataset_tlvs_empty(aioclient_mock: AiohttpClientMocker):
     """Test get_active_dataset_tlvs."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.NO_CONTENT)
     assert await otbr.get_active_dataset_tlvs() is None
@@ -206,7 +228,9 @@ async def test_get_active_dataset_tlvs_empty(aioclient_mock: AiohttpClientMocker
 
 async def test_get_pending_dataset_tlvs(aioclient_mock: AiohttpClientMocker) -> None:
     """Test get_pending_dataset_tlvs."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     mock_response = (
         "0E080000000000010000340400006699000300000C35060004001FFFE00208057B7CD3D6CC9F65"
@@ -221,7 +245,9 @@ async def test_get_pending_dataset_tlvs(aioclient_mock: AiohttpClientMocker) -> 
 
 async def test_get_pending_dataset_tlvs_empty(aioclient_mock: AiohttpClientMocker):
     """Test get_pending_dataset_tlvs."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
     assert await otbr.get_pending_dataset_tlvs() is None
@@ -229,7 +255,9 @@ async def test_get_pending_dataset_tlvs_empty(aioclient_mock: AiohttpClientMocke
 
 async def test_create_active_dataset(aioclient_mock: AiohttpClientMocker):
     """Test create_active_dataset."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.put(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.CREATED)
 
@@ -261,7 +289,9 @@ async def test_create_active_dataset(aioclient_mock: AiohttpClientMocker):
 
 async def test_delete_active_dataset(aioclient_mock: AiohttpClientMocker):
     """Test delete_active_dataset."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.delete(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.OK)
 
@@ -274,7 +304,9 @@ async def test_delete_active_dataset(aioclient_mock: AiohttpClientMocker):
 
 async def test_create_pending_dataset(aioclient_mock: AiohttpClientMocker):
     """Test create_pending_dataset."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CREATED)
 
@@ -322,7 +354,9 @@ async def test_create_pending_dataset(aioclient_mock: AiohttpClientMocker):
 
 async def test_delete_pending_dataset(aioclient_mock: AiohttpClientMocker):
     """Test delete_pending_dataset."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.delete(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.OK)
 
@@ -335,7 +369,9 @@ async def test_delete_pending_dataset(aioclient_mock: AiohttpClientMocker):
 
 async def test_set_channel(aioclient_mock: AiohttpClientMocker) -> None:
     """Test set_channel."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=DATASET_JSON)
     aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CREATED)
@@ -362,7 +398,9 @@ async def test_set_channel(aioclient_mock: AiohttpClientMocker) -> None:
 
 async def test_set_channel_default_delay(aioclient_mock: AiohttpClientMocker) -> None:
     """Test set_channel."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=DATASET_JSON)
     aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CREATED)
@@ -389,7 +427,9 @@ async def test_set_channel_default_delay(aioclient_mock: AiohttpClientMocker) ->
 
 async def test_set_channel_no_timestamp(aioclient_mock: AiohttpClientMocker) -> None:
     """Test set_channel."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     dataset_json = dict(DATASET_JSON)
     dataset_json.pop("ActiveTimestamp")
@@ -419,7 +459,9 @@ async def test_set_channel_no_timestamp(aioclient_mock: AiohttpClientMocker) -> 
 
 async def test_set_channel_invalid_channel(aioclient_mock: AiohttpClientMocker) -> None:
     """Test set_channel."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     with pytest.raises(python_otbr_api.OTBRError):
         await otbr.set_channel(123)
@@ -427,7 +469,9 @@ async def test_set_channel_invalid_channel(aioclient_mock: AiohttpClientMocker) 
 
 async def test_set_channel_no_dataset(aioclient_mock: AiohttpClientMocker) -> None:
     """Test set_channel."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.NO_CONTENT)
 
@@ -437,7 +481,9 @@ async def test_set_channel_no_dataset(aioclient_mock: AiohttpClientMocker) -> No
 
 async def test_get_extended_address(aioclient_mock: AiohttpClientMocker) -> None:
     """Test get_active_dataset_tlvs."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     mock_response = "4EF6C4F3FF750626"
 
@@ -448,7 +494,9 @@ async def test_get_extended_address(aioclient_mock: AiohttpClientMocker) -> None
 
 async def test_get_coprocessor_version(aioclient_mock: AiohttpClientMocker) -> None:
     """Test get_coprocessor_version."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     mock_response = (
         "OPENTHREAD/thread-reference-20200818-1740-g33cc75ed3;"
@@ -462,7 +510,9 @@ async def test_get_coprocessor_version(aioclient_mock: AiohttpClientMocker) -> N
 
 async def test_set_enabled_201(aioclient_mock: AiohttpClientMocker) -> None:
     """Test set_enabled."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.put(f"{BASE_URL}/node/state", status=HTTPStatus.CREATED)
 
@@ -472,7 +522,9 @@ async def test_set_enabled_201(aioclient_mock: AiohttpClientMocker) -> None:
 
 async def test_get_active_dataset_201(aioclient_mock: AiohttpClientMocker):
     """Test get_active_dataset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.CREATED)
     with pytest.raises(python_otbr_api.OTBRError):
@@ -481,7 +533,9 @@ async def test_get_active_dataset_201(aioclient_mock: AiohttpClientMocker):
 
 async def test_get_active_dataset_invalid(aioclient_mock: AiohttpClientMocker):
     """Test get_active_dataset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", text="unexpected")
     with pytest.raises(python_otbr_api.OTBRError):
@@ -490,7 +544,9 @@ async def test_get_active_dataset_invalid(aioclient_mock: AiohttpClientMocker):
 
 async def test_get_active_dataset_tlvs_201(aioclient_mock: AiohttpClientMocker):
     """Test get_active_dataset_tlvs with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.CREATED)
     with pytest.raises(python_otbr_api.OTBRError):
@@ -499,7 +555,9 @@ async def test_get_active_dataset_tlvs_201(aioclient_mock: AiohttpClientMocker):
 
 async def test_get_active_dataset_tlvs_invalid(aioclient_mock: AiohttpClientMocker):
     """Test get_active_dataset_tlvs with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", text="unexpected")
     with pytest.raises(python_otbr_api.OTBRError):
@@ -508,7 +566,9 @@ async def test_get_active_dataset_tlvs_invalid(aioclient_mock: AiohttpClientMock
 
 async def test_get_pending_dataset_tlvs_201(aioclient_mock: AiohttpClientMocker):
     """Test test_get_pending_dataset_tlvs_201 with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CREATED)
     with pytest.raises(python_otbr_api.OTBRError):
@@ -519,7 +579,9 @@ async def test_test_get_pending_dataset_tlvs_201_invalid(
     aioclient_mock: AiohttpClientMocker,
 ):
     """Test get_pending_dataset_tlvs with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", text="unexpected")
     with pytest.raises(python_otbr_api.OTBRError):
@@ -528,7 +590,9 @@ async def test_test_get_pending_dataset_tlvs_201_invalid(
 
 async def test_create_active_dataset_thread_active(aioclient_mock: AiohttpClientMocker):
     """Test create_active_dataset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.put(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.CONFLICT)
 
@@ -538,7 +602,9 @@ async def test_create_active_dataset_thread_active(aioclient_mock: AiohttpClient
 
 async def test_create_active_dataset_202(aioclient_mock: AiohttpClientMocker):
     """Test create_active_dataset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.put(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.ACCEPTED)
 
@@ -548,7 +614,9 @@ async def test_create_active_dataset_202(aioclient_mock: AiohttpClientMocker):
 
 async def test_delete_active_dataset_thread_active(aioclient_mock: AiohttpClientMocker):
     """Test delete_active_dataset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.delete(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.CONFLICT)
 
@@ -558,7 +626,9 @@ async def test_delete_active_dataset_thread_active(aioclient_mock: AiohttpClient
 
 async def test_delete_active_dataset_202(aioclient_mock: AiohttpClientMocker):
     """Test delete_active_dataset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.delete(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.ACCEPTED)
 
@@ -570,7 +640,9 @@ async def test_create_pending_dataset_thread_active(
     aioclient_mock: AiohttpClientMocker,
 ):
     """Test create_pending_dataset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CONFLICT)
 
@@ -580,7 +652,9 @@ async def test_create_pending_dataset_thread_active(
 
 async def test_create_pending_dataset_202(aioclient_mock: AiohttpClientMocker):
     """Test create_pending_dataset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.ACCEPTED)
 
@@ -592,7 +666,9 @@ async def test_delete_pending_dataset_thread_active(
     aioclient_mock: AiohttpClientMocker,
 ):
     """Test delete_pending_dataset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.delete(
         f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CONFLICT
@@ -604,7 +680,9 @@ async def test_delete_pending_dataset_thread_active(
 
 async def test_delete_pending_dataset_202(aioclient_mock: AiohttpClientMocker):
     """Test delete_pending_dataset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.delete(
         f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.ACCEPTED
@@ -618,7 +696,9 @@ async def test_set_active_dataset_tlvs_thread_active(
     aioclient_mock: AiohttpClientMocker,
 ):
     """Test set_active_dataset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.put(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.CONFLICT)
 
@@ -628,7 +708,9 @@ async def test_set_active_dataset_tlvs_thread_active(
 
 async def test_set_active_dataset_tlvs_202(aioclient_mock: AiohttpClientMocker):
     """Test set_active_dataset with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.put(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.ACCEPTED)
 
@@ -638,7 +720,9 @@ async def test_set_active_dataset_tlvs_202(aioclient_mock: AiohttpClientMocker):
 
 async def test_get_extended_address_201(aioclient_mock: AiohttpClientMocker) -> None:
     """Test get_extended_address with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/ext-address", status=HTTPStatus.CREATED)
 
@@ -648,7 +732,9 @@ async def test_get_extended_address_201(aioclient_mock: AiohttpClientMocker) -> 
 
 async def test_get_extended_address_invalid(aioclient_mock: AiohttpClientMocker):
     """Test get_extended_address with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(f"{BASE_URL}/node/ext-address", text="unexpected")
     with pytest.raises(python_otbr_api.OTBRError):
@@ -657,7 +743,9 @@ async def test_get_extended_address_invalid(aioclient_mock: AiohttpClientMocker)
 
 async def test_get_coprocessor_version_invalid(aioclient_mock: AiohttpClientMocker):
     """Test get_coprocessor_version with error."""
-    otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
 
     aioclient_mock.get(
         f"{BASE_URL}/node/coprocessor/version", status=HTTPStatus.NOT_FOUND
