@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 import python_otbr_api
-from python_otbr_api import KeyFormat, VersionNotDetectedError
+from python_otbr_api import KeyFormat
 
 from tests.test_util.aiohttp import AiohttpClientMocker
 
@@ -36,30 +36,46 @@ DATASET_JSON_CAMEL: dict[str, Any] = {
 }
 
 
-async def test_detect_version_camel(aioclient_mock: AiohttpClientMocker) -> None:
-    """A 200 on /api/actions indicates a post-flip (camelCase) server."""
+async def test_auto_detect_camel(aioclient_mock: AiohttpClientMocker) -> None:
+    """A 200 on /api/actions selects the camelCase wire format."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
 
     aioclient_mock.get(
         f"{BASE_URL}/api/actions", status=HTTPStatus.OK, json={"data": []}
     )
+    aioclient_mock.put(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.CREATED)
 
-    assert await otbr.detect_version() == KeyFormat.CAMEL_CASE
+    await otbr.create_active_dataset(
+        python_otbr_api.ActiveDataSet(network_name="OpenThread HA", channel=15)
+    )
+
+    assert aioclient_mock.mock_calls[-1][2] == {
+        "networkName": "OpenThread HA",
+        "channel": 15,
+    }
 
 
-async def test_detect_version_pascal(aioclient_mock: AiohttpClientMocker) -> None:
-    """A 404 on /api/actions indicates the legacy PascalCase REST API."""
+async def test_auto_detect_pascal(aioclient_mock: AiohttpClientMocker) -> None:
+    """A 404 on /api/actions selects the legacy PascalCase wire format."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
 
     aioclient_mock.get(f"{BASE_URL}/api/actions", status=HTTPStatus.NOT_FOUND)
+    aioclient_mock.put(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.CREATED)
 
-    assert await otbr.detect_version() == KeyFormat.PASCAL_CASE
+    await otbr.create_active_dataset(
+        python_otbr_api.ActiveDataSet(network_name="OpenThread HA", channel=15)
+    )
+
+    assert aioclient_mock.mock_calls[-1][2] == {
+        "NetworkName": "OpenThread HA",
+        "Channel": 15,
+    }
 
 
-async def test_detect_version_unexpected_status(
+async def test_auto_detect_unexpected_status(
     aioclient_mock: AiohttpClientMocker,
 ) -> None:
-    """Any status other than 200/404 is an inconclusive probe and raises."""
+    """Any probe status other than 200/404 is inconclusive and raises."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
 
     aioclient_mock.get(
@@ -67,17 +83,23 @@ async def test_detect_version_unexpected_status(
     )
 
     with pytest.raises(python_otbr_api.OTBRError):
-        await otbr.detect_version()
+        await otbr.factory_reset()
 
 
-async def test_method_without_detect_raises(
-    aioclient_mock: AiohttpClientMocker,
-) -> None:
-    """Methods refuse to run before detect_version has been called."""
+async def test_auto_detect_runs_once(aioclient_mock: AiohttpClientMocker) -> None:
+    """Detection happens lazily on first call and is cached for subsequent calls."""
     otbr = python_otbr_api.OTBR(BASE_URL, aioclient_mock.create_session())
 
-    with pytest.raises(VersionNotDetectedError):
-        await otbr.factory_reset()
+    aioclient_mock.get(
+        f"{BASE_URL}/api/actions", status=HTTPStatus.OK, json={"data": []}
+    )
+    aioclient_mock.delete(f"{BASE_URL}/node", status=HTTPStatus.OK)
+
+    await otbr.factory_reset()
+    await otbr.factory_reset()
+
+    # 1 probe + 2 factory_reset calls
+    assert aioclient_mock.call_count == 3
 
 
 async def test_constructor_key_format_skips_detection(

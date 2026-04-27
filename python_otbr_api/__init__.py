@@ -88,10 +88,6 @@ class ThreadNetworkActiveError(OTBRError):
     """Raised on attempts to modify the active dataset when thread network is active."""
 
 
-class VersionNotDetectedError(OTBRError):
-    """Raised when a method is called before detect_version()."""
-
-
 def _rewrite_keys(data: Any, mapping: dict[str, str]) -> Any:
     """Recursively rename dict keys according to mapping; pass through others."""
     if not isinstance(data, dict):
@@ -116,8 +112,11 @@ class OTBR:  # pylint: disable=too-few-public-methods
         self._timeout = timeout
         self._key_format = key_format
 
-    async def detect_version(self) -> KeyFormat:
+    async def _maybe_detect_key_format(self) -> None:
         """Probe the OTBR REST API to determine the JSON key format."""
+        if self._key_format is not None:
+            return
+
         response = await self._session.get(
             f"{self._url}/api/actions",
             timeout=aiohttp.ClientTimeout(total=self._timeout),
@@ -134,13 +133,6 @@ class OTBR:  # pylint: disable=too-few-public-methods
             )
 
         _LOGGER.debug("Detected OTBR JSON key format: %s", self._key_format)
-        return self._key_format
-
-    def _require_detected(self) -> None:
-        if self._key_format is None:
-            raise VersionNotDetectedError(
-                "detect_version() must be called before any other method"
-            )
 
     def _encode(self, data: dict) -> dict:
         """Rewrite a camelCase body to the detected wire format."""
@@ -158,7 +150,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
 
     async def factory_reset(self) -> None:
         """Factory reset the router."""
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.delete(
             f"{self._url}/node",
             timeout=aiohttp.ClientTimeout(total=10),
@@ -172,7 +164,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
 
     async def get_border_agent_id(self) -> bytes:
         """Get the border agent ID."""
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.get(
             f"{self._url}/node/ba-id",
             timeout=aiohttp.ClientTimeout(total=self._timeout),
@@ -191,7 +183,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
 
     async def set_enabled(self, enabled: bool) -> None:
         """Enable or disable the router."""
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.put(
             f"{self._url}/node/state",
             json="enable" if enabled else "disable",
@@ -207,7 +199,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
         Returns None if there is no active operational dataset.
         Raises if the http status is 400 or higher or if the response is invalid.
         """
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.get(
             f"{self._url}/node/dataset/active",
             timeout=aiohttp.ClientTimeout(total=self._timeout),
@@ -230,7 +222,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
         Returns None if there is no active operational dataset.
         Raises if the http status is 400 or higher or if the response is invalid.
         """
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.get(
             f"{self._url}/node/dataset/active",
             headers={"Accept": "text/plain"},
@@ -254,7 +246,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
         Returns None if there is no pending operational dataset.
         Raises if the http status is 400 or higher or if the response is invalid.
         """
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.get(
             f"{self._url}/node/dataset/pending",
             headers={"Accept": "text/plain"},
@@ -279,7 +271,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
         not set will be automatically set by the open thread border router.
         Raises if the http status is 400 or higher or if the response is invalid.
         """
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.put(
             f"{self._url}/node/dataset/active",
             json=self._encode(dataset.as_json()),
@@ -293,7 +285,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
 
     async def delete_active_dataset(self) -> None:
         """Delete active operational dataset."""
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.delete(
             f"{self._url}/node/dataset/active",
             timeout=aiohttp.ClientTimeout(total=self._timeout),
@@ -311,7 +303,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
         not set will be automatically set by the open thread border router.
         Raises if the http status is 400 or higher or if the response is invalid.
         """
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.put(
             f"{self._url}/node/dataset/pending",
             json=self._encode(dataset.as_json()),
@@ -325,7 +317,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
 
     async def delete_pending_dataset(self) -> None:
         """Delete pending operational dataset."""
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.delete(
             f"{self._url}/node/dataset/pending",
             timeout=aiohttp.ClientTimeout(total=self._timeout),
@@ -341,7 +333,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
 
         Raises if the http status is 400 or higher or if the response is invalid.
         """
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.put(
             f"{self._url}/node/dataset/active",
             data=dataset.hex(),
@@ -381,7 +373,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
 
         Raises if the http status is not 200 or if the response is invalid.
         """
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.get(
             f"{self._url}/node/ext-address",
             headers={"Accept": "application/json"},
@@ -401,7 +393,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
 
         Raises if the http status is not 200 or if the response is invalid.
         """
-        self._require_detected()
+        await self._maybe_detect_key_format()
         response = await self._session.get(
             f"{self._url}/node/coprocessor/version",
             headers={"Accept": "application/json"},
