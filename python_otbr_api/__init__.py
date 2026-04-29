@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from enum import Enum
 from http import HTTPStatus
-from typing import Any
 import json
 import logging
+from typing import Any
 
 import aiohttp
 import voluptuous as vol  # type: ignore[import]

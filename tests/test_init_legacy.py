@@ -4,9 +4,9 @@ from http import HTTPStatus
 from typing import Any
 
 import pytest
+
 import python_otbr_api
 from python_otbr_api import KeyFormat
-
 from tests.test_util.aiohttp import AiohttpClientMocker
 
 BASE_URL = "http://core-silabs-multiprotocol:8081"

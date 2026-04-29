@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives.ciphers import algorithms
 AES_128_KEY_LEN = 16
 ITERATION_COUNTS = 16384
 BLKSIZE = 16
-SALT_PREFIX = "Thread".encode()
+SALT_PREFIX = b"Thread"
 
 
 def _derive_key(passphrase: str) -> bytes:

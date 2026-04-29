@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import IntEnum
-import struct
 import logging
+import struct
 
 _LOGGER = logging.getLogger(__name__)
 
