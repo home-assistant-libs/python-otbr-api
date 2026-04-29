@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import Self
 
-import bitstruct  # type: ignore[import]
+import bitstruct
 
 
 class ConnectionMode(IntEnum):

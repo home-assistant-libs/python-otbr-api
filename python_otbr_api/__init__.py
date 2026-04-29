@@ -6,12 +6,26 @@ from enum import Enum
 from http import HTTPStatus
 import json
 import logging
-from typing import Any
+from typing import Any, TypeVar, cast
 
 import aiohttp
-import voluptuous as vol  # type: ignore[import]
+import voluptuous as vol
 
-from .models import ActiveDataSet, PendingDataSet, Timestamp
+from .models import ActiveDataSet, PendingDataSet, SecurityPolicy, Timestamp
+
+__all__ = [
+    "ActiveDataSet",
+    "FactoryResetNotSupportedError",
+    "GetBorderAgentIdNotSupportedError",
+    "KeyFormat",
+    "OTBR",
+    "OTBRError",
+    "PENDING_DATASET_DELAY_TIMER",
+    "PendingDataSet",
+    "SecurityPolicy",
+    "ThreadNetworkActiveError",
+    "Timestamp",
+]
 
 # 5 minutes as recommended by
 # https://github.com/openthread/openthread/discussions/8567#discussioncomment-4468920
@@ -56,6 +70,8 @@ _CAMEL_TO_PASCAL: dict[str, str] = {
 }
 _PASCAL_TO_CAMEL: dict[str, str] = {v: k for k, v in _CAMEL_TO_PASCAL.items()}
 
+_RewriteT = TypeVar("_RewriteT", dict[str, Any], list[Any], str, int, float, bool, None)
+
 
 class KeyFormat(Enum):
     """JSON key format used by the OTBR REST API.
@@ -88,7 +104,7 @@ class ThreadNetworkActiveError(OTBRError):
     """Raised on attempts to modify the active dataset when thread network is active."""
 
 
-def _rewrite_keys(data: Any, mapping: dict[str, str]) -> Any:
+def _rewrite_keys(data: _RewriteT, mapping: dict[str, str]) -> _RewriteT:
     """Recursively rename dict keys according to mapping; pass through others."""
     if not isinstance(data, dict):
         return data
@@ -134,13 +150,13 @@ class OTBR:  # pylint: disable=too-few-public-methods
 
         _LOGGER.debug("Detected OTBR JSON key format: %s", self._key_format)
 
-    def _encode(self, data: dict) -> dict:
+    def _encode(self, data: dict[str, Any]) -> dict[str, Any]:
         """Rewrite a camelCase body to the detected wire format."""
         if self._key_format == KeyFormat.PASCAL_CASE:
             return _rewrite_keys(data, _CAMEL_TO_PASCAL)
         return data
 
-    def _decode(self, data: dict) -> dict:
+    def _decode(self, data: dict[str, Any]) -> dict[str, Any]:
         """Normalize a wire response body to camelCase."""
 
         # Runs unconditionally: camelCase keys aren't in the table so they pass through
@@ -149,7 +165,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
         return _rewrite_keys(data, _PASCAL_TO_CAMEL)
 
     async def factory_reset(self) -> None:
-        """Factory reset the router."""
+        """Reset the router to factory defaults."""
         await self._maybe_detect_key_format()
         response = await self._session.delete(
             f"{self._url}/node",
@@ -349,7 +365,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
     async def set_channel(
         self, channel: int, delay: int = PENDING_DATASET_DELAY_TIMER
     ) -> None:
-        """Change the channel
+        """Change the channel.
 
         The channel is changed by creating a new pending dataset based on the active
         dataset.
@@ -404,6 +420,6 @@ class OTBR:  # pylint: disable=too-few-public-methods
             raise OTBRError(f"unexpected http status {response.status}")
 
         try:
-            return await response.json()
+            return cast(str, await response.json())
         except ValueError as exc:
             raise OTBRError("unexpected API response") from exc

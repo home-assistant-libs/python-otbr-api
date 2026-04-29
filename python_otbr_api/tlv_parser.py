@@ -101,6 +101,7 @@ class NetworkName(MeshcopTLVItem):
             raise TLVError(f"invalid network name '{self.data.hex()}'") from err
 
     def __str__(self) -> str:
+        """Return the network name."""
         return self.name
 
 
