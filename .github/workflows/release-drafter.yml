@@ -5,11 +5,22 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
   update_release_draft:
+    name: Update release draft
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # release-drafter writes the draft release
+      pull-requests: write # release-drafter labels merged PRs
     steps:
       # Drafts your next Release notes as Pull Requests are merged into "main"
-      - uses: release-drafter/release-drafter@v7.2.1
+      - uses: release-drafter/release-drafter@563bf132657a13ded0b01fcb723c5a58cdd824e2 # v7.2.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
