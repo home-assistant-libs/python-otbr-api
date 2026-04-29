@@ -6,9 +6,9 @@ https://github.com/openthread/ot-br-posix/blob/8a8b2411abcf68659c25bb97672bdd2e5
 
 from dataclasses import dataclass
 from enum import IntEnum
+from typing import Self
 
-import bitstruct  # type: ignore[import]
-from typing_extensions import Self
+import bitstruct
 
 
 class ConnectionMode(IntEnum):

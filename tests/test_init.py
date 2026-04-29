@@ -4,9 +4,9 @@ from http import HTTPStatus
 from typing import Any
 
 import pytest
+
 import python_otbr_api
 from python_otbr_api import KeyFormat
-
 from tests.test_util.aiohttp import AiohttpClientMocker
 
 BASE_URL = "http://core-openthread-border-router:8081"
@@ -130,9 +130,11 @@ async def test_get_active_dataset_camel(aioclient_mock: AiohttpClientMocker) -> 
 async def test_camel_read_with_pascal_straggler(
     aioclient_mock: AiohttpClientMocker,
 ) -> None:
-    """CAMEL_CASE reads are always normalized, so Sept-2025..Apr-2026 OTBR
-    builds that still emit pascal-case stragglers (e.g. `Routers`) parse
-    cleanly instead of blowing up schema validation."""
+    """Test that CAMEL_CASE reads normalize pascal-case stragglers.
+
+    Sept-2025..Apr-2026 OTBR builds emit pascal-case stragglers (e.g. `Routers`)
+    that should parse cleanly instead of blowing up schema validation.
+    """
     otbr = python_otbr_api.OTBR(
         BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.CAMEL_CASE
     )

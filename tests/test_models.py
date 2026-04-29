@@ -28,6 +28,7 @@ def test_active_dataset_from_json():
     assert dataset.active_timestamp == python_otbr_api.Timestamp(
         authoritative=False, seconds=1, ticks=0
     )
+    assert dataset.security_policy is not None
     assert dataset.security_policy.rotation_time == 672
     assert dataset.as_json() == ACTIVE_DATASET_CAMEL
 

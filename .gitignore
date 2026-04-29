@@ -5,15 +5,23 @@ tmp/
 
 *.py[cod]
 *.egg
-htmlcov
+htmlcov/
+.coverage
+coverage.xml
 
 .projectile
 .venv/
 venv/
 .mypy_cache/
+.pytest_cache/
+.ruff_cache/
 *.egg-info/
 
 # Visual Studio Code
 .vscode/*
 
-dist
+build/
+dist/
+
+# Claude Code one-off scripts
+claude/

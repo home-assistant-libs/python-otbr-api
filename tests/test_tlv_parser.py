@@ -3,11 +3,11 @@
 import pytest
 
 from python_otbr_api.tlv_parser import (
-    Timestamp,
     Channel,
     MeshcopTLVItem,
     MeshcopTLVType,
     NetworkName,
+    Timestamp,
     TLVError,
     encode_tlv,
     parse_tlv,
@@ -19,10 +19,10 @@ NEW_MESHCOP_DATASET: dict[MeshcopTLVType | int, MeshcopTLVItem] = {
         MeshcopTLVType.DURATION, bytes.fromhex("05")
     ),
     MeshcopTLVType.PROVISIONING_URL: MeshcopTLVItem(
-        MeshcopTLVType.PROVISIONING_URL, "test".encode()
+        MeshcopTLVType.PROVISIONING_URL, b"test"
     ),
     MeshcopTLVType.VENDOR_NAME_TLV: MeshcopTLVItem(
-        MeshcopTLVType.VENDOR_NAME_TLV, "ACME".encode()
+        MeshcopTLVType.VENDOR_NAME_TLV, b"ACME"
     ),
     MeshcopTLVType.UDP_ENCAPSULATION_TLV: MeshcopTLVItem(
         MeshcopTLVType.UDP_ENCAPSULATION_TLV, bytes.fromhex("beef")
@@ -46,7 +46,7 @@ NEW_MESHCOP_DATASET: dict[MeshcopTLVType | int, MeshcopTLVItem] = {
         MeshcopTLVType.ENERGY_LIST, bytes.fromhex("010203")
     ),
     MeshcopTLVType.THREAD_DOMAIN_NAME: MeshcopTLVItem(
-        MeshcopTLVType.THREAD_DOMAIN_NAME, "home".encode()
+        MeshcopTLVType.THREAD_DOMAIN_NAME, b"home"
     ),
     MeshcopTLVType.DISCOVERYREQUEST: MeshcopTLVItem(
         MeshcopTLVType.DISCOVERYREQUEST, bytes.fromhex("00")
@@ -89,7 +89,7 @@ def test_encode_tlv() -> None:
             MeshcopTLVType.NETWORKKEY, bytes.fromhex("00112233445566778899aabbccddeeff")
         ),
         MeshcopTLVType.NETWORKNAME: NetworkName(
-            MeshcopTLVType.NETWORKNAME, "OpenThreadDemo".encode()
+            MeshcopTLVType.NETWORKNAME, b"OpenThreadDemo"
         ),
         MeshcopTLVType.PANID: MeshcopTLVItem(
             MeshcopTLVType.PANID, bytes.fromhex("1234")
@@ -135,7 +135,7 @@ def test_parse_tlv() -> None:
             MeshcopTLVType.EXTPANID, bytes.fromhex("1111111122222222")
         ),
         MeshcopTLVType.NETWORKNAME: NetworkName(
-            MeshcopTLVType.NETWORKNAME, "OpenThreadDemo".encode()
+            MeshcopTLVType.NETWORKNAME, b"OpenThreadDemo"
         ),
         MeshcopTLVType.PSKC: MeshcopTLVItem(
             MeshcopTLVType.PSKC, bytes.fromhex("445f2b5ca6f2a93a55ce570a70efeecb")
@@ -183,7 +183,7 @@ def test_parse_tlv_with_wakeup_channel() -> None:
             MeshcopTLVType.CHANNELMASK, bytes.fromhex("0004001fffc0")
         ),
         MeshcopTLVType.NETWORKNAME: NetworkName(
-            MeshcopTLVType.NETWORKNAME, "MyHome1231231234".encode()
+            MeshcopTLVType.NETWORKNAME, b"MyHome1231231234"
         ),
     }
 
@@ -225,8 +225,7 @@ def test_parse_tlv_error(tlv, error, msg) -> None:
 
 
 def test_timestamp_parsing_full_integrity() -> None:
-    """
-    Test parsing of a timestamp with mixed values for seconds, ticks, and authoritative.
+    """Test parsing of a timestamp with mixed values for seconds, ticks, and authoritative.
 
     We construct a value to ensure no bit overlap:
     - Seconds: 400 (0x190)

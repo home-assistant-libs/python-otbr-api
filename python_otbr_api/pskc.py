@@ -4,6 +4,7 @@ Based on https://github.com/openthread/ot-br-posix/blob/main/src/utils/pskc.cpp
 """
 
 import struct
+from typing import cast
 
 from cryptography.hazmat.primitives import cmac
 from cryptography.hazmat.primitives.ciphers import algorithms
@@ -11,7 +12,7 @@ from cryptography.hazmat.primitives.ciphers import algorithms
 AES_128_KEY_LEN = 16
 ITERATION_COUNTS = 16384
 BLKSIZE = 16
-SALT_PREFIX = "Thread".encode()
+SALT_PREFIX = b"Thread"
 
 
 def _derive_key(passphrase: str) -> bytes:
@@ -21,7 +22,7 @@ def _derive_key(passphrase: str) -> bytes:
         return passphrase_bytes
     c = cmac.CMAC(algorithms.AES128(b"\0" * AES_128_KEY_LEN))
     c.update(passphrase_bytes)
-    return c.finalize()
+    return cast(bytes, c.finalize())
 
 
 def compute_pskc(ext_pan_id: bytes, network_name: str, passphrase: str) -> bytes:
@@ -50,4 +51,4 @@ def compute_pskc(ext_pan_id: bytes, network_name: str, passphrase: str) -> bytes
         for i in range(BLKSIZE):
             pskc[i] ^= prf_output[i]
 
-    return pskc
+    return bytes(pskc)

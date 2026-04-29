@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-import voluptuous as vol  # type: ignore[import]
+import voluptuous as vol
 
 
 @dataclass
@@ -24,7 +24,7 @@ class Timestamp:
     seconds: int | None = None
     ticks: int | None = None
 
-    def as_json(self) -> dict:
+    def as_json(self) -> dict[str, Any]:
         """Serialize to JSON."""
         result: dict[str, Any] = {}
         if self.authoritative is not None:
@@ -76,7 +76,7 @@ class SecurityPolicy:  # pylint: disable=too-many-instance-attributes
     routers: bool | None = None
     to_ble_link: bool | None = None
 
-    def as_json(self) -> dict:
+    def as_json(self) -> dict[str, Any]:
         """Serialize to JSON."""
         result: dict[str, Any] = {}
         if self.autonomous_enrollment is not None:
@@ -149,7 +149,7 @@ class ActiveDataSet:  # pylint: disable=too-many-instance-attributes
     psk_c: str | None = None
     security_policy: SecurityPolicy | None = None
 
-    def as_json(self) -> dict:
+    def as_json(self) -> dict[str, Any]:
         """Serialize to JSON."""
         result: dict[str, Any] = {}
         if self.active_timestamp is not None:
@@ -215,7 +215,7 @@ class PendingDataSet:  # pylint: disable=too-many-instance-attributes
     delay: int | None = None
     pending_timestamp: Timestamp | None = None
 
-    def as_json(self) -> dict:
+    def as_json(self) -> dict[str, Any]:
         """Serialize to JSON."""
         result: dict[str, Any] = {}
         if self.active_dataset is not None:
