@@ -50,4 +50,4 @@ def compute_pskc(ext_pan_id: bytes, network_name: str, passphrase: str) -> bytes
         for i in range(BLKSIZE):
             pskc[i] ^= prf_output[i]
 
-    return pskc
+    return bytes(pskc)
