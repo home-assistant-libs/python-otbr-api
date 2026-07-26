@@ -3,9 +3,24 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
 
 import voluptuous as vol  # type: ignore[import]
+
+
+class EphemeralKeyState(Enum):
+    """State of the border agent ephemeral key (ePSKc) session.
+
+    Reported by the `/node/ba-epskc/key` endpoint. See
+    otBorderAgentEphemeralKeyState in openthread/border_agent.h.
+    """
+
+    DISABLED = "disabled"
+    STOPPED = "stopped"
+    STARTED = "started"
+    CONNECTED = "connected"
+    ACCEPTED = "accepted"
 
 
 @dataclass
@@ -197,6 +212,22 @@ class ActiveDataSet:  # pylint: disable=too-many-instance-attributes
             json_data.get("pskc"),
             security_policy,
         )
+
+
+@dataclass
+class EphemeralKeyStatus:
+    """Status of the border agent ephemeral key (ePSKc) session."""
+
+    state: EphemeralKeyState
+    port: int
+
+
+@dataclass
+class EphemeralKeyActivationResult:
+    """Result of activating an ephemeral key (ePSKc)."""
+
+    tap: str
+    port: int
 
 
 @dataclass

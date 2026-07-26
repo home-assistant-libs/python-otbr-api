@@ -11,7 +11,14 @@ import logging
 import aiohttp
 import voluptuous as vol  # type: ignore[import]
 
-from .models import ActiveDataSet, PendingDataSet, Timestamp
+from .models import (
+    ActiveDataSet,
+    EphemeralKeyActivationResult,
+    EphemeralKeyState,
+    EphemeralKeyStatus,
+    PendingDataSet,
+    Timestamp,
+)
 
 # 5 minutes as recommended by
 # https://github.com/openthread/openthread/discussions/8567#discussioncomment-4468920
@@ -86,6 +93,15 @@ class GetBorderAgentIdNotSupportedError(OTBRError):
 
 class ThreadNetworkActiveError(OTBRError):
     """Raised on attempts to modify the active dataset when thread network is active."""
+
+
+class EphemeralKeyNotSupportedError(OTBRError):
+    """Raised when the router does not support the ephemeral key (ePSKc) feature."""
+
+
+class EphemeralKeyConflictError(OTBRError):
+    """Raised when activating an ephemeral key while the feature is disabled or a
+    key is already active."""
 
 
 def _rewrite_keys(data: Any, mapping: dict[str, str]) -> Any:
@@ -387,6 +403,134 @@ class OTBR:  # pylint: disable=too-few-public-methods
             return bytes.fromhex(await response.json())
         except ValueError as exc:
             raise OTBRError("unexpected API response") from exc
+
+    async def get_ephemeral_key_enabled(self) -> bool:
+        """Get whether the ephemeral key (ePSKc) feature is enabled.
+
+        Raises EphemeralKeyNotSupportedError if the router does not support
+        the ephemeral key feature.
+        """
+        await self._maybe_detect_key_format()
+        response = await self._session.get(
+            f"{self._url}/node/ba-epskc/state",
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status == HTTPStatus.NOT_FOUND:
+            raise EphemeralKeyNotSupportedError
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+        try:
+            return (await response.json()) == "enabled"
+        except ValueError as exc:
+            raise OTBRError("unexpected API response") from exc
+
+    async def set_ephemeral_key_enabled(self, enabled: bool) -> None:
+        """Enable or disable the ephemeral key (ePSKc) feature.
+
+        The feature must be enabled before an ephemeral key can be activated.
+        Raises EphemeralKeyNotSupportedError if the router does not support
+        the ephemeral key feature.
+        """
+        await self._maybe_detect_key_format()
+        response = await self._session.put(
+            f"{self._url}/node/ba-epskc/state",
+            json="enable" if enabled else "disable",
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status == HTTPStatus.NOT_FOUND:
+            raise EphemeralKeyNotSupportedError
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+    async def get_ephemeral_key_status(self) -> EphemeralKeyStatus:
+        """Get the status of the current ephemeral key (ePSKc) session.
+
+        Raises EphemeralKeyNotSupportedError if the router does not support
+        the ephemeral key feature.
+        """
+        await self._maybe_detect_key_format()
+        response = await self._session.get(
+            f"{self._url}/node/ba-epskc/key",
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status == HTTPStatus.NOT_FOUND:
+            raise EphemeralKeyNotSupportedError
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+        try:
+            data = await response.json()
+            return EphemeralKeyStatus(
+                state=EphemeralKeyState(data["state"]), port=data["port"]
+            )
+        except (ValueError, KeyError) as exc:
+            raise OTBRError("unexpected API response") from exc
+
+    async def activate_ephemeral_key(
+        self, lifetime: int | None = None, port: int | None = None
+    ) -> EphemeralKeyActivationResult:
+        """Generate and activate an ephemeral key (ePSKc).
+
+        Returns the generated 9-digit Thread Administration Passcode (TAP)
+        and the UDP port the border agent is listening on for the ePSKc
+        session. `lifetime` is the key lifetime in milliseconds and `port`
+        the UDP port to use; both default to the router's own defaults when
+        omitted.
+
+        Raises EphemeralKeyNotSupportedError if the router does not support
+        the ephemeral key feature, and EphemeralKeyConflictError if the
+        feature is disabled or a key is already active.
+        """
+        await self._maybe_detect_key_format()
+        body: dict[str, int] = {}
+        if lifetime is not None:
+            body["lifetime"] = lifetime
+        if port is not None:
+            body["port"] = port
+
+        response = await self._session.post(
+            f"{self._url}/node/ba-epskc/key",
+            json=body,
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status == HTTPStatus.NOT_FOUND:
+            raise EphemeralKeyNotSupportedError
+        if response.status == HTTPStatus.CONFLICT:
+            raise EphemeralKeyConflictError
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+        try:
+            data = await response.json()
+            return EphemeralKeyActivationResult(tap=data["tap"], port=data["port"])
+        except (ValueError, KeyError) as exc:
+            raise OTBRError("unexpected API response") from exc
+
+    async def deactivate_ephemeral_key(self) -> None:
+        """Deactivate the currently active ephemeral key (ePSKc), if any.
+
+        Raises EphemeralKeyNotSupportedError if the router does not support
+        the ephemeral key feature.
+        """
+        await self._maybe_detect_key_format()
+        response = await self._session.delete(
+            f"{self._url}/node/ba-epskc/key",
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status == HTTPStatus.NOT_FOUND:
+            raise EphemeralKeyNotSupportedError
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
 
     async def get_coprocessor_version(self) -> str:
         """Get the coprocessor firmware version.
