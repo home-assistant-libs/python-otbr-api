@@ -111,6 +111,8 @@ class OTBR:  # pylint: disable=too-few-public-methods
         self._url = url
         self._timeout = timeout
         self._key_format = key_format
+        self._api_version: str | None = None
+        self._api_version_checked = False
 
     async def _maybe_detect_key_format(self) -> None:
         """Probe the OTBR REST API to determine the JSON key format."""
@@ -407,3 +409,40 @@ class OTBR:  # pylint: disable=too-few-public-methods
             return await response.json()
         except ValueError as exc:
             raise OTBRError("unexpected API response") from exc
+
+    async def get_api_version(self) -> str | None:
+        """Get the OTBR REST API's semantic version, if the router advertises one.
+
+        Reads `/.well-known/thread/br-rest` (RFC 8615), added in ot-br-posix
+        PR #3330 (merged 2026-07-07). Returns a semver string such as
+        "0.3.0", or None on routers that predate that PR and don't expose
+        the endpoint (a 404 is not an error: it just means "unknown").
+        The result is cached for the lifetime of this OTBR instance.
+
+        Raises OTBRError if the endpoint exists but responds with an
+        unexpected status or a malformed body.
+        """
+        if self._api_version_checked:
+            return self._api_version
+
+        response = await self._session.get(
+            f"{self._url}/.well-known/thread/br-rest",
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status == HTTPStatus.NOT_FOUND:
+            self._api_version_checked = True
+            return None
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+        try:
+            data = await response.json()
+            self._api_version = data["api"]["version"]
+        except (ValueError, KeyError, TypeError) as exc:
+            raise OTBRError("unexpected API response") from exc
+
+        self._api_version_checked = True
+        _LOGGER.debug("Detected OTBR REST API version: %s", self._api_version)
+        return self._api_version
