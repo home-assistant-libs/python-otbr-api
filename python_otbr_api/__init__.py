@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import Enum, auto
 from http import HTTPStatus
 from typing import Any
 import json
@@ -72,6 +72,15 @@ class KeyFormat(Enum):
     PASCAL_CASE = "pascal"
 
 
+class _UndefinedType(Enum):
+    """Singleton sentinel distinguishing "not probed yet" from a probed None."""
+
+    UNDEFINED = auto()
+
+
+_UNDEFINED = _UndefinedType.UNDEFINED
+
+
 class OTBRError(Exception):
     """Raised on error."""
 
@@ -111,8 +120,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
         self._url = url
         self._timeout = timeout
         self._key_format = key_format
-        self._api_version: str | None = None
-        self._api_version_checked = False
+        self._api_version: str | None | _UndefinedType = _UNDEFINED
 
     async def _maybe_detect_key_format(self) -> None:
         """Probe the OTBR REST API to determine the JSON key format."""
@@ -411,18 +419,14 @@ class OTBR:  # pylint: disable=too-few-public-methods
             raise OTBRError("unexpected API response") from exc
 
     async def get_api_version(self) -> str | None:
-        """Get the OTBR REST API's semantic version, if the router advertises one.
+        """Get the OTBR REST API's semantic version.
 
-        Reads `/.well-known/thread/br-rest` (RFC 8615), added in ot-br-posix
-        PR #3330 (merged 2026-07-07). Returns a semver string such as
-        "0.3.0", or None on routers that predate that PR and don't expose
-        the endpoint (a 404 is not an error: it just means "unknown").
-        The result is cached for the lifetime of this OTBR instance.
-
-        Raises OTBRError if the endpoint exists but responds with an
-        unexpected status or a malformed body.
+        Reads /.well-known/thread/br-rest (ot-br-posix PR #3330). Returns
+        None on routers that don't expose it. Raises OTBRError if the
+        endpoint exists but responds with an unexpected status or a
+        malformed body.
         """
-        if self._api_version_checked:
+        if self._api_version is not _UNDEFINED:
             return self._api_version
 
         response = await self._session.get(
@@ -431,7 +435,7 @@ class OTBR:  # pylint: disable=too-few-public-methods
         )
 
         if response.status == HTTPStatus.NOT_FOUND:
-            self._api_version_checked = True
+            self._api_version = None
             return None
 
         if response.status != HTTPStatus.OK:
@@ -439,10 +443,10 @@ class OTBR:  # pylint: disable=too-few-public-methods
 
         try:
             data = await response.json()
-            self._api_version = data["api"]["version"]
+            api_version: str = data["api"]["version"]
         except (ValueError, KeyError, TypeError) as exc:
             raise OTBRError("unexpected API response") from exc
 
-        self._api_version_checked = True
-        _LOGGER.debug("Detected OTBR REST API version: %s", self._api_version)
-        return self._api_version
+        self._api_version = api_version
+        _LOGGER.debug("Detected OTBR REST API version: %s", api_version)
+        return api_version
