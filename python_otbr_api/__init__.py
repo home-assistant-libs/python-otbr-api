@@ -336,17 +336,36 @@ class OTBR:  # pylint: disable=too-many-public-methods
 
         The passed in PendingDataSet does not need to be fully populated, any fields
         not set will be automatically set by the open thread border router.
-        Raises if the http status is 400 or higher or if the response is invalid.
+
+        A write while a pending dataset is in flight is refused outright, for the
+        same reasons set_pending_dataset_tlvs refuses it: superseding one races
+        the delay timer on every device that already holds the old dataset, so a
+        late replacement can split the mesh, and it would also silently undo
+        whatever the in-flight dataset was doing, such as a channel change.
+
+        The check runs locally first, and again on the border router for one
+        that honors If-None-Match on this endpoint
+        (https://github.com/openthread/ot-br-posix/pull/3552), where it is
+        atomic with the write; older border routers ignore the header.
+
+        Raises PendingDatasetConflictError when either check refuses the write,
+        and OTBRError if the http status is 400 or higher for any other reason
+        or the response is invalid.
         """
+        if await self.get_pending_dataset_tlvs() is not None:
+            raise PendingDatasetConflictError("a pending dataset is already in place")
         await self._maybe_detect_key_format()
         response = await self._session.put(
             f"{self._url}/node/dataset/pending",
             json=self._encode(dataset.as_json()),
+            headers={"If-None-Match": "*"},
             timeout=aiohttp.ClientTimeout(total=self._timeout),
         )
 
         if response.status == HTTPStatus.CONFLICT:
             raise ThreadNetworkActiveError
+        if response.status == HTTPStatus.PRECONDITION_FAILED:
+            raise PendingDatasetConflictError("a pending dataset is already in place")
         if response.status not in (HTTPStatus.CREATED, HTTPStatus.OK):
             raise OTBRError(f"unexpected http status {response.status}")
 
@@ -424,15 +443,14 @@ class OTBR:  # pylint: disable=too-many-public-methods
         """Change the channel
 
         The channel is changed by creating a new pending dataset based on the active
-        dataset. If a pending dataset is already in place, the change is refused:
-        stamping from the active dataset alone would make the mesh silently ignore
-        it while the router accepts the write, and superseding the pending dataset
-        would race its delay timer on devices that miss the update.
+        dataset. If a pending dataset is already in place, create_pending_dataset
+        refuses the write and raises PendingDatasetConflictError: stamping from the
+        active dataset alone would make the mesh silently ignore it while the router
+        accepts the write, and superseding the pending dataset would race its delay
+        timer on devices that miss the update.
         """
         if not 11 <= channel <= 26:
             raise OTBRError(f"invalid channel {channel}")
-        if await self.get_pending_dataset_tlvs() is not None:
-            raise OTBRError("a pending dataset is already in place")
         if not (dataset := await self.get_active_dataset()):
             raise OTBRError("router has no active dataset")
 

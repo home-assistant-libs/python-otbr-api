@@ -310,13 +310,15 @@ async def test_create_pending_dataset(aioclient_mock: AiohttpClientMocker):
         BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
     )
 
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
     aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CREATED)
 
     await otbr.create_pending_dataset(python_otbr_api.PendingDataSet())
-    assert aioclient_mock.call_count == 1
+    assert aioclient_mock.call_count == 2
     assert aioclient_mock.mock_calls[-1][0] == "PUT"
     assert aioclient_mock.mock_calls[-1][1].path == "/node/dataset/pending"
     assert aioclient_mock.mock_calls[-1][2] == {}
+    assert aioclient_mock.mock_calls[-1][3]["If-None-Match"] == "*"
 
     await otbr.create_pending_dataset(
         python_otbr_api.PendingDataSet(
@@ -325,7 +327,7 @@ async def test_create_pending_dataset(aioclient_mock: AiohttpClientMocker):
             python_otbr_api.Timestamp(),
         )
     )
-    assert aioclient_mock.call_count == 2
+    assert aioclient_mock.call_count == 4
     assert aioclient_mock.mock_calls[-1][0] == "PUT"
     assert aioclient_mock.mock_calls[-1][1].path == "/node/dataset/pending"
     assert aioclient_mock.mock_calls[-1][2] == {
@@ -342,7 +344,7 @@ async def test_create_pending_dataset(aioclient_mock: AiohttpClientMocker):
             23456,
         )
     )
-    assert aioclient_mock.call_count == 3
+    assert aioclient_mock.call_count == 6
     assert aioclient_mock.mock_calls[-1][0] == "PUT"
     assert aioclient_mock.mock_calls[-1][1].path == "/node/dataset/pending"
     assert aioclient_mock.mock_calls[-1][2] == {
@@ -393,9 +395,9 @@ async def test_set_channel(aioclient_mock: AiohttpClientMocker) -> None:
     await otbr.set_channel(new_channel, 1234)
     assert aioclient_mock.call_count == 3
     assert aioclient_mock.mock_calls[0][0] == "GET"
-    assert aioclient_mock.mock_calls[0][1].path == "/node/dataset/pending"
+    assert aioclient_mock.mock_calls[0][1].path == "/node/dataset/active"
     assert aioclient_mock.mock_calls[1][0] == "GET"
-    assert aioclient_mock.mock_calls[1][1].path == "/node/dataset/active"
+    assert aioclient_mock.mock_calls[1][1].path == "/node/dataset/pending"
     assert aioclient_mock.mock_calls[2][0] == "PUT"
     assert aioclient_mock.mock_calls[2][1].path == "/node/dataset/pending"
     assert aioclient_mock.mock_calls[2][2] == expected_pending_dataset
@@ -425,9 +427,9 @@ async def test_set_channel_default_delay(aioclient_mock: AiohttpClientMocker) ->
     await otbr.set_channel(new_channel)
     assert aioclient_mock.call_count == 3
     assert aioclient_mock.mock_calls[0][0] == "GET"
-    assert aioclient_mock.mock_calls[0][1].path == "/node/dataset/pending"
+    assert aioclient_mock.mock_calls[0][1].path == "/node/dataset/active"
     assert aioclient_mock.mock_calls[1][0] == "GET"
-    assert aioclient_mock.mock_calls[1][1].path == "/node/dataset/active"
+    assert aioclient_mock.mock_calls[1][1].path == "/node/dataset/pending"
     assert aioclient_mock.mock_calls[2][0] == "PUT"
     assert aioclient_mock.mock_calls[2][1].path == "/node/dataset/pending"
     assert aioclient_mock.mock_calls[2][2] == expected_pending_dataset
@@ -460,9 +462,9 @@ async def test_set_channel_no_timestamp(aioclient_mock: AiohttpClientMocker) -> 
     await otbr.set_channel(new_channel)
     assert aioclient_mock.call_count == 3
     assert aioclient_mock.mock_calls[0][0] == "GET"
-    assert aioclient_mock.mock_calls[0][1].path == "/node/dataset/pending"
+    assert aioclient_mock.mock_calls[0][1].path == "/node/dataset/active"
     assert aioclient_mock.mock_calls[1][0] == "GET"
-    assert aioclient_mock.mock_calls[1][1].path == "/node/dataset/active"
+    assert aioclient_mock.mock_calls[1][1].path == "/node/dataset/pending"
     assert aioclient_mock.mock_calls[2][0] == "PUT"
     assert aioclient_mock.mock_calls[2][1].path == "/node/dataset/pending"
     assert aioclient_mock.mock_calls[2][2] == expected_pending_dataset
@@ -484,7 +486,6 @@ async def test_set_channel_no_dataset(aioclient_mock: AiohttpClientMocker) -> No
         BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
     )
 
-    aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
     aioclient_mock.get(f"{BASE_URL}/node/dataset/active", status=HTTPStatus.NO_CONTENT)
 
     with pytest.raises(python_otbr_api.OTBRError):
@@ -498,7 +499,8 @@ async def test_set_channel_rejected_while_pending(
 
     Stamping from the active dataset alone would make the mesh silently ignore
     the write, and superseding the pending dataset would race its delay timer
-    on devices that miss the update; refusing is the only honest answer.
+    on devices that miss the update; refusing is the only honest answer. The
+    refusal comes from create_pending_dataset, so nothing is written.
     """
     otbr = python_otbr_api.OTBR(
         BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
@@ -509,11 +511,13 @@ async def test_set_channel_rejected_while_pending(
         "0708FD17C9D59809B27A05107546326F20BCCFD946609FBAF7F39AD5030F4F70656E5468726561"
         "642D32366363010226CC0410FA7EC34EBE58DD1FD74F13F65D021C5B0C0402A0F7F8"
     )
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=DATASET_JSON)
     aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", text=mock_response)
 
-    with pytest.raises(python_otbr_api.OTBRError):
+    with pytest.raises(python_otbr_api.PendingDatasetConflictError):
         await otbr.set_channel(16)
-    assert aioclient_mock.call_count == 1
+    assert not [call for call in aioclient_mock.mock_calls if call[0] == "PUT"]
+    assert aioclient_mock.call_count == 2
 
 
 async def test_get_extended_address(aioclient_mock: AiohttpClientMocker) -> None:
@@ -681,6 +685,7 @@ async def test_create_pending_dataset_thread_active(
         BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
     )
 
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
     aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CONFLICT)
 
     with pytest.raises(python_otbr_api.ThreadNetworkActiveError):
@@ -693,6 +698,7 @@ async def test_create_pending_dataset_202(aioclient_mock: AiohttpClientMocker):
         BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
     )
 
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
     aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.ACCEPTED)
 
     with pytest.raises(python_otbr_api.OTBRError):
@@ -877,3 +883,40 @@ async def test_set_pending_dataset_tlvs_202(
 
     with pytest.raises(python_otbr_api.OTBRError):
         await otbr.set_pending_dataset_tlvs(b"")
+
+
+async def test_create_pending_dataset_refused_while_pending(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Test a write is refused while a pending dataset is in place."""
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    in_flight = "0E080000000000010000340400006699000300000C"
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", text=in_flight)
+
+    with pytest.raises(python_otbr_api.PendingDatasetConflictError):
+        await otbr.create_pending_dataset(python_otbr_api.PendingDataSet())
+    assert aioclient_mock.call_count == 1
+
+
+async def test_create_pending_dataset_refused_by_router(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Test the border router refusing the precondition is surfaced.
+
+    A pending dataset created between the local check and the write is only
+    caught by the router, which evaluates If-None-Match atomically with it.
+    """
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
+    aioclient_mock.put(
+        f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.PRECONDITION_FAILED
+    )
+
+    with pytest.raises(python_otbr_api.PendingDatasetConflictError):
+        await otbr.create_pending_dataset(python_otbr_api.PendingDataSet())
