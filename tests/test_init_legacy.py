@@ -864,6 +864,90 @@ async def test_set_pending_dataset_tlvs_refused_by_router(
         await otbr.set_pending_dataset_tlvs(b"")
 
 
+async def test_get_pending_dataset_tlvs_with_etag(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Test get_pending_dataset_tlvs_with_etag."""
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    mock_response = "0E080000000000010000340400006699000300000C"
+    aioclient_mock.get(
+        f"{BASE_URL}/node/dataset/pending",
+        text=mock_response,
+        headers={"ETag": '"8311BDCD94E7107C"'},
+    )
+
+    assert await otbr.get_pending_dataset_tlvs_with_etag() == (
+        bytes.fromhex(mock_response),
+        '"8311BDCD94E7107C"',
+    )
+
+
+async def test_get_pending_dataset_tlvs_with_etag_no_tag(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Test the tag is None on a border router that hands out none."""
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    mock_response = "0E080000000000010000340400006699000300000C"
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", text=mock_response)
+
+    assert await otbr.get_pending_dataset_tlvs_with_etag() == (
+        bytes.fromhex(mock_response),
+        None,
+    )
+
+
+async def test_get_pending_dataset_tlvs_with_etag_empty(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Test get_pending_dataset_tlvs_with_etag without a pending dataset."""
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
+    assert await otbr.get_pending_dataset_tlvs_with_etag() is None
+
+
+async def test_set_pending_dataset_tlvs_if_match(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Test if_match makes the replace conditional on the tag, with no local check."""
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    dataset = bytes.fromhex("0E080000000000010000340400006699000300000C")
+    aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.OK)
+
+    await otbr.set_pending_dataset_tlvs(dataset, if_match='"8311BDCD94E7107C"')
+    assert aioclient_mock.call_count == 1
+    assert aioclient_mock.mock_calls[-1][0] == "PUT"
+    assert aioclient_mock.mock_calls[-1][3]["If-Match"] == '"8311BDCD94E7107C"'
+    assert "If-None-Match" not in aioclient_mock.mock_calls[-1][3]
+
+
+async def test_set_pending_dataset_tlvs_if_match_changed(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Test a conditional replace of a dataset that changed is surfaced."""
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    aioclient_mock.put(
+        f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.PRECONDITION_FAILED
+    )
+
+    with pytest.raises(python_otbr_api.PendingDatasetConflictError):
+        await otbr.set_pending_dataset_tlvs(b"", if_match='"8311BDCD94E7107C"')
+
+
 async def test_set_pending_dataset_tlvs_202(
     aioclient_mock: AiohttpClientMocker,
 ) -> None:

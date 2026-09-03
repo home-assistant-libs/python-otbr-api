@@ -114,7 +114,11 @@ class EphemeralKeyConflictError(OTBRError):
 
 
 class PendingDatasetConflictError(OTBRError):
-    """Raised when a pending dataset write is refused because one is in place.
+    """Raised when a pending dataset write is refused.
+
+    Either a pending dataset is already in place for a guarded write, or the
+    one whose entity tag the write carried has been replaced since it was
+    read.
 
     Its own type rather than a plain OTBRError: the caller's next step is
     different from the one a transport or protocol failure calls for, since
@@ -281,6 +285,21 @@ class OTBR:  # pylint: disable=too-many-public-methods
         Returns None if there is no pending operational dataset.
         Raises if the http status is 400 or higher or if the response is invalid.
         """
+        result = await self.get_pending_dataset_tlvs_with_etag()
+        return None if result is None else result[0]
+
+    async def get_pending_dataset_tlvs_with_etag(
+        self,
+    ) -> tuple[bytes, str | None] | None:
+        """Get the pending dataset TLVs together with its entity tag, or None.
+
+        Returns None if there is no pending operational dataset. The entity
+        tag is None on a border router that does not hand one out; when it
+        does (https://github.com/openthread/ot-br-posix/pull/3553), the tag
+        can be passed to set_pending_dataset_tlvs() as if_match to only
+        replace the dataset that was read here.
+        Raises if the http status is 400 or higher or if the response is invalid.
+        """
         await self._maybe_detect_key_format()
         response = await self._session.get(
             f"{self._url}/node/dataset/pending",
@@ -295,7 +314,10 @@ class OTBR:  # pylint: disable=too-many-public-methods
             raise OTBRError(f"unexpected http status {response.status}")
 
         try:
-            return bytes.fromhex(await response.text("ASCII"))
+            return (
+                bytes.fromhex(await response.text("ASCII")),
+                response.headers.get("ETag"),
+            )
         except ValueError as exc:
             raise OTBRError("unexpected API response") from exc
 
@@ -381,7 +403,9 @@ class OTBR:  # pylint: disable=too-many-public-methods
         if response.status not in (HTTPStatus.CREATED, HTTPStatus.OK):
             raise OTBRError(f"unexpected http status {response.status}")
 
-    async def set_pending_dataset_tlvs(self, dataset: bytes) -> None:
+    async def set_pending_dataset_tlvs(
+        self, dataset: bytes, *, if_match: str | None = None
+    ) -> None:
         """Set the pending operational dataset, when none is in place yet.
 
         A write while a pending dataset is in flight is refused outright.
@@ -397,23 +421,45 @@ class OTBR:  # pylint: disable=too-many-public-methods
         (https://github.com/openthread/ot-br-posix/pull/3552), where it is
         atomic with the write; older border routers ignore the header.
 
-        Raises PendingDatasetConflictError when either check refuses the
-        write, and OTBRError if the http status is 400 or higher for any
+        The one deliberate way to replace an in-flight dataset is by its
+        entity tag: a caller that read it via
+        get_pending_dataset_tlvs_with_etag() passes the tag as if_match, and
+        the write then only replaces exactly the dataset that was read,
+        refused if it changed in between. That check happens on the border
+        router, atomically with the write, so no local check runs on this
+        path; an older border router that hands out no entity tags ignores
+        the header, making the replace there unconditional, which is why a
+        caller must only offer this as an explicit, informed choice.
+
+        Raises PendingDatasetConflictError when any of these checks refuses
+        the write, and OTBRError if the http status is 400 or higher for any
         other reason or the response is invalid.
         """
-        if await self.get_pending_dataset_tlvs() is not None:
-            raise PendingDatasetConflictError("a pending dataset is already in place")
+        if if_match is None:
+            if await self.get_pending_dataset_tlvs() is not None:
+                raise PendingDatasetConflictError(
+                    "a pending dataset is already in place"
+                )
         await self._maybe_detect_key_format()
+        headers = {"Content-Type": "text/plain"}
+        if if_match is not None:
+            headers["If-Match"] = if_match
+        else:
+            headers["If-None-Match"] = "*"
         response = await self._session.put(
             f"{self._url}/node/dataset/pending",
             data=dataset.hex(),
-            headers={"Content-Type": "text/plain", "If-None-Match": "*"},
+            headers=headers,
             timeout=aiohttp.ClientTimeout(total=10),
         )
 
         if response.status == HTTPStatus.CONFLICT:
             raise ThreadNetworkActiveError
         if response.status == HTTPStatus.PRECONDITION_FAILED:
+            if if_match is not None:
+                raise PendingDatasetConflictError(
+                    "the pending dataset changed since it was read"
+                )
             raise PendingDatasetConflictError("a pending dataset is already in place")
         if response.status not in (HTTPStatus.CREATED, HTTPStatus.OK):
             raise OTBRError(f"unexpected http status {response.status}")
