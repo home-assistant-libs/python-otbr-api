@@ -9,6 +9,30 @@ from typing import Any
 import voluptuous as vol  # type: ignore[import]
 
 
+class DeviceRole(Enum):
+    """Role the border router has in its Thread network.
+
+    Reported by the `/node/state` endpoint. See otDeviceRole in
+    openthread/thread.h.
+    """
+
+    DISABLED = "disabled"
+    DETACHED = "detached"
+    CHILD = "child"
+    ROUTER = "router"
+    LEADER = "leader"
+
+    @property
+    def is_attached(self) -> bool:
+        """Return whether the router is attached to a Thread network.
+
+        A router that is not attached reaches no other device: a pending
+        dataset written to it is applied to its own active dataset when the
+        delay timer expires and never reaches the mesh.
+        """
+        return self in (DeviceRole.CHILD, DeviceRole.ROUTER, DeviceRole.LEADER)
+
+
 class EphemeralKeyState(Enum):
     """State of the border agent ephemeral key (ePSKc) session.
 

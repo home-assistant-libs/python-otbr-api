@@ -13,6 +13,7 @@ import voluptuous as vol  # type: ignore[import]
 
 from .models import (
     ActiveDataSet,
+    DeviceRole,
     EphemeralKeyActivationResult,
     EphemeralKeyState,
     EphemeralKeyStatus,
@@ -227,6 +228,29 @@ class OTBR:  # pylint: disable=too-many-public-methods
 
         if response.status != HTTPStatus.OK:
             raise OTBRError(f"unexpected http status {response.status}")
+
+    async def get_device_role(self) -> DeviceRole:
+        """Get the role the router has in its Thread network.
+
+        Reads /node/state, which reports the OpenThread device role.
+
+        Raises if the http status is not 200, or if the role is not one this
+        library knows.
+        """
+        await self._maybe_detect_key_format()
+        response = await self._session.get(
+            f"{self._url}/node/state",
+            headers={"Accept": "application/json"},
+            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        )
+
+        if response.status != HTTPStatus.OK:
+            raise OTBRError(f"unexpected http status {response.status}")
+
+        try:
+            return DeviceRole(await response.json())
+        except ValueError as exc:
+            raise OTBRError("unexpected API response") from exc
 
     async def get_active_dataset(self) -> ActiveDataSet | None:
         """Get current active operational dataset.
