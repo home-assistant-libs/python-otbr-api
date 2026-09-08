@@ -549,6 +549,55 @@ async def test_get_coprocessor_version(aioclient_mock: AiohttpClientMocker) -> N
     assert await otbr.get_coprocessor_version() == mock_response
 
 
+@pytest.mark.parametrize(
+    ("role", "attached"),
+    [
+        ("disabled", False),
+        ("detached", False),
+        ("child", True),
+        ("router", True),
+        ("leader", True),
+    ],
+)
+async def test_get_device_role(
+    aioclient_mock: AiohttpClientMocker, role: str, attached: bool
+) -> None:
+    """Test get_device_role."""
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    aioclient_mock.get(f"{BASE_URL}/node/state", json=role)
+
+    reported = await otbr.get_device_role()
+    assert reported is python_otbr_api.DeviceRole(role)
+    assert reported.is_attached is attached
+
+
+async def test_get_device_role_201(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test get_device_role with an unexpected status."""
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    aioclient_mock.get(f"{BASE_URL}/node/state", status=HTTPStatus.CREATED)
+
+    with pytest.raises(python_otbr_api.OTBRError):
+        await otbr.get_device_role()
+
+
+async def test_get_device_role_unknown(aioclient_mock: AiohttpClientMocker) -> None:
+    """Test get_device_role with a role this library does not know."""
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    aioclient_mock.get(f"{BASE_URL}/node/state", json="commissioner")
+
+    with pytest.raises(python_otbr_api.OTBRError):
+        await otbr.get_device_role()
+
+
 async def test_set_enabled_201(aioclient_mock: AiohttpClientMocker) -> None:
     """Test set_enabled."""
     otbr = python_otbr_api.OTBR(
