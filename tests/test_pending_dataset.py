@@ -104,3 +104,19 @@ async def test_set_pending_dataset_tlvs_client_timeout(
 
     with pytest.raises(python_otbr_api.PendingDatasetOutcomeUnknownError):
         await otbr.set_pending_dataset_tlvs(b"")
+
+
+async def test_set_pending_dataset_tlvs_rejected_without_reason(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Test a rejection the border router did not explain."""
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
+    aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CONFLICT)
+
+    with pytest.raises(python_otbr_api.PendingDatasetRejectedError) as exc_info:
+        await otbr.set_pending_dataset_tlvs(b"")
+    assert exc_info.value.reason == ""

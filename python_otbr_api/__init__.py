@@ -128,6 +128,34 @@ class PendingDatasetConflictError(OTBRError):
     """
 
 
+class PendingDatasetRejectedError(OTBRError):
+    """Raised when the border router rejected a pending dataset.
+
+    A border router that registers a pending dataset with the Thread leader
+    (https://github.com/openthread/ot-br-posix/pull/3582) answers 409 for
+    three reasons, and says which in `reason`, in its own words:
+
+    - "rejected by leader": the leader refused the dataset, for instance
+      because its pending or active timestamp does not advance. Nothing was
+      registered; the caller has to change what it asked for.
+    - "no longer attached": the router is not on a network. Nothing was
+      registered either.
+    - busy: an earlier registration is still being answered, which can take
+      the router's full 30 second wait. Nothing new was registered, but the
+      earlier write may yet take effect: retry the same dataset once the
+      earlier exchange has finalized, rather than change it.
+    """
+
+    def __init__(self, reason: str) -> None:
+        """Initialize with the reason the border router gave, if any."""
+        super().__init__(
+            f"the border router rejected the pending dataset: {reason}"
+            if reason
+            else "the border router rejected the pending dataset"
+        )
+        self.reason = reason
+
+
 class PendingDatasetOutcomeUnknownError(OTBRError):
     """Raised when a pending dataset write got no answer.
 
@@ -147,6 +175,20 @@ def _rewrite_keys(data: Any, mapping: dict[str, str]) -> Any:
     return {mapping.get(k, k): _rewrite_keys(v, mapping) for k, v in data.items()}
 
 
+async def _error_reason(response: aiohttp.ClientResponse) -> str:
+    """Return the reason the border router gave for an error, if any.
+
+    The REST API wraps it as the title of a JSON error object; a plain body
+    is taken as it is.
+    """
+    text = (await response.text()).strip()
+    try:
+        title = json.loads(text).get("title")
+    except (ValueError, AttributeError):
+        return text
+    return str(title) if title else text
+
+
 async def _raise_for_pending_dataset_status(response: aiohttp.ClientResponse) -> None:
     """Raise for the answers the two pending dataset writers share.
 
@@ -154,7 +196,7 @@ async def _raise_for_pending_dataset_status(response: aiohttp.ClientResponse) ->
     place keeps them from drifting apart.
     """
     if response.status == HTTPStatus.CONFLICT:
-        raise ThreadNetworkActiveError
+        raise PendingDatasetRejectedError(await _error_reason(response))
     if response.status == HTTPStatus.PRECONDITION_FAILED:
         raise PendingDatasetConflictError("a pending dataset is already in place")
     if response.status == HTTPStatus.GATEWAY_TIMEOUT:
@@ -405,7 +447,8 @@ class OTBR:  # pylint: disable=too-many-public-methods
         atomic with the write; older border routers ignore the header.
 
         Raises PendingDatasetConflictError when either check refuses the write,
-        PendingDatasetOutcomeUnknownError when the write got no answer -- from
+        PendingDatasetRejectedError when the border router rejected it and
+        says why, PendingDatasetOutcomeUnknownError when the write got no answer -- from
         the leader, or at all -- so it may or may not have taken effect, and
         OTBRError if the http status is 400 or higher for any other reason
         or the response is invalid.
@@ -467,7 +510,8 @@ class OTBR:  # pylint: disable=too-many-public-methods
         atomic with the write; older border routers ignore the header.
 
         Raises PendingDatasetConflictError when either check refuses the
-        write, PendingDatasetOutcomeUnknownError when the write got no
+        write, PendingDatasetRejectedError when the border router rejected
+        it and says why, PendingDatasetOutcomeUnknownError when the write got no
         answer -- from the leader, or at all -- so it may or may not have
         taken effect, and OTBRError if the http status is 400 or higher for
         any other reason or the response is invalid.
@@ -493,8 +537,9 @@ class OTBR:  # pylint: disable=too-many-public-methods
         active dataset alone would make the mesh silently ignore it while the router
         accepts the write, and superseding the pending dataset would race its delay
         timer on devices that miss the update. The other answers of
-        create_pending_dataset propagate as well; PendingDatasetOutcomeUnknownError
-        in particular means the change may be on its way, not that it failed.
+        create_pending_dataset propagate as well: PendingDatasetRejectedError
+        says why the border router refused, and PendingDatasetOutcomeUnknownError
+        means the change may be on its way, not that it failed.
         """
         if not 11 <= channel <= 26:
             raise OTBRError(f"invalid channel {channel}")
