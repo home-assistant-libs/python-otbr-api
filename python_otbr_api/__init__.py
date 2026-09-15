@@ -24,6 +24,12 @@ from .models import (
 # https://github.com/openthread/openthread/discussions/8567#discussioncomment-4468920
 PENDING_DATASET_DELAY_TIMER = 5 * 60 * 1000
 
+# How long a pending dataset write may take. A border router that registers
+# the dataset with the Thread leader (ot-br-posix#3582) waits up to 30 s for
+# the leader's verdict before it answers; a client that gives up sooner can
+# never receive that verdict. A longer client timeout is honoured as it is.
+PENDING_DATASET_TIMEOUT = 40
+
 _LOGGER = logging.getLogger(__name__)
 
 # OTBR flipped the REST API from PascalCase to camelCase in ot-br-posix
@@ -122,6 +128,18 @@ class PendingDatasetConflictError(OTBRError):
     """
 
 
+class PendingDatasetOutcomeUnknownError(OTBRError):
+    """Raised when a pending dataset write got no answer.
+
+    A border router that registers the dataset with the Thread leader
+    (https://github.com/openthread/ot-br-posix/pull/3582) answers 504 when
+    the leader does not respond in time, and a client can time out waiting
+    for that answer itself. Either way the dataset may or may not have been
+    accepted: a caller must treat the write as possibly in flight, the way
+    it would a dropped connection, not as refused.
+    """
+
+
 def _rewrite_keys(data: Any, mapping: dict[str, str]) -> Any:
     """Recursively rename dict keys according to mapping; pass through others."""
     if not isinstance(data, dict):
@@ -139,6 +157,8 @@ async def _raise_for_pending_dataset_status(response: aiohttp.ClientResponse) ->
         raise ThreadNetworkActiveError
     if response.status == HTTPStatus.PRECONDITION_FAILED:
         raise PendingDatasetConflictError("a pending dataset is already in place")
+    if response.status == HTTPStatus.GATEWAY_TIMEOUT:
+        raise PendingDatasetOutcomeUnknownError("no response from the leader")
     if response.status not in (HTTPStatus.CREATED, HTTPStatus.OK):
         raise OTBRError(f"unexpected http status {response.status}")
 
@@ -345,6 +365,28 @@ class OTBR:  # pylint: disable=too-many-public-methods
         if response.status != HTTPStatus.OK:
             raise OTBRError(f"unexpected http status {response.status}")
 
+    async def _put_pending_dataset(self, **kwargs: Any) -> aiohttp.ClientResponse:
+        """Send a pending dataset write, waiting for the leader's verdict.
+
+        A timeout leaves the outcome unknown -- the request may have reached
+        the router, which may have registered the dataset -- and is reported
+        the way the router reports no answer from the leader. A timeout
+        while still connecting is included on the safe side; the cause is
+        chained for a caller that wants to tell them apart.
+        """
+        try:
+            return await self._session.put(
+                f"{self._url}/node/dataset/pending",
+                timeout=aiohttp.ClientTimeout(
+                    total=max(self._timeout, PENDING_DATASET_TIMEOUT)
+                ),
+                **kwargs,
+            )
+        except TimeoutError as exc:
+            raise PendingDatasetOutcomeUnknownError(
+                "no answer from the border router"
+            ) from exc
+
     async def create_pending_dataset(self, dataset: PendingDataSet) -> None:
         """Create pending operational dataset.
 
@@ -363,17 +405,16 @@ class OTBR:  # pylint: disable=too-many-public-methods
         atomic with the write; older border routers ignore the header.
 
         Raises PendingDatasetConflictError when either check refuses the write,
-        and OTBRError if the http status is 400 or higher for any other reason
+        PendingDatasetOutcomeUnknownError when the write got no answer -- from
+        the leader, or at all -- so it may or may not have taken effect, and
+        OTBRError if the http status is 400 or higher for any other reason
         or the response is invalid.
         """
         if await self.get_pending_dataset_tlvs() is not None:
             raise PendingDatasetConflictError("a pending dataset is already in place")
         await self._maybe_detect_key_format()
-        response = await self._session.put(
-            f"{self._url}/node/dataset/pending",
-            json=self._encode(dataset.as_json()),
-            headers={"If-None-Match": "*"},
-            timeout=aiohttp.ClientTimeout(total=self._timeout),
+        response = await self._put_pending_dataset(
+            json=self._encode(dataset.as_json()), headers={"If-None-Match": "*"}
         )
 
         await _raise_for_pending_dataset_status(response)
@@ -426,17 +467,17 @@ class OTBR:  # pylint: disable=too-many-public-methods
         atomic with the write; older border routers ignore the header.
 
         Raises PendingDatasetConflictError when either check refuses the
-        write, and OTBRError if the http status is 400 or higher for any
-        other reason or the response is invalid.
+        write, PendingDatasetOutcomeUnknownError when the write got no
+        answer -- from the leader, or at all -- so it may or may not have
+        taken effect, and OTBRError if the http status is 400 or higher for
+        any other reason or the response is invalid.
         """
         if await self.get_pending_dataset_tlvs() is not None:
             raise PendingDatasetConflictError("a pending dataset is already in place")
         await self._maybe_detect_key_format()
-        response = await self._session.put(
-            f"{self._url}/node/dataset/pending",
+        response = await self._put_pending_dataset(
             data=dataset.hex(),
             headers={"Content-Type": "text/plain", "If-None-Match": "*"},
-            timeout=aiohttp.ClientTimeout(total=10),
         )
 
         await _raise_for_pending_dataset_status(response)
@@ -451,7 +492,9 @@ class OTBR:  # pylint: disable=too-many-public-methods
         refuses the write and raises PendingDatasetConflictError: stamping from the
         active dataset alone would make the mesh silently ignore it while the router
         accepts the write, and superseding the pending dataset would race its delay
-        timer on devices that miss the update.
+        timer on devices that miss the update. The other answers of
+        create_pending_dataset propagate as well; PendingDatasetOutcomeUnknownError
+        in particular means the change may be on its way, not that it failed.
         """
         if not 11 <= channel <= 26:
             raise OTBRError(f"invalid channel {channel}")
