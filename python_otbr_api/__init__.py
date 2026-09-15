@@ -129,6 +129,20 @@ def _rewrite_keys(data: Any, mapping: dict[str, str]) -> Any:
     return {mapping.get(k, k): _rewrite_keys(v, mapping) for k, v in data.items()}
 
 
+async def _raise_for_pending_dataset_status(response: aiohttp.ClientResponse) -> None:
+    """Raise for the answers the two pending dataset writers share.
+
+    Both write to the same endpoint and read its verdict the same way; one
+    place keeps them from drifting apart.
+    """
+    if response.status == HTTPStatus.CONFLICT:
+        raise ThreadNetworkActiveError
+    if response.status == HTTPStatus.PRECONDITION_FAILED:
+        raise PendingDatasetConflictError("a pending dataset is already in place")
+    if response.status not in (HTTPStatus.CREATED, HTTPStatus.OK):
+        raise OTBRError(f"unexpected http status {response.status}")
+
+
 class OTBR:  # pylint: disable=too-many-public-methods
     """Class to interact with the Open Thread Border Router REST API."""
 
@@ -362,12 +376,7 @@ class OTBR:  # pylint: disable=too-many-public-methods
             timeout=aiohttp.ClientTimeout(total=self._timeout),
         )
 
-        if response.status == HTTPStatus.CONFLICT:
-            raise ThreadNetworkActiveError
-        if response.status == HTTPStatus.PRECONDITION_FAILED:
-            raise PendingDatasetConflictError("a pending dataset is already in place")
-        if response.status not in (HTTPStatus.CREATED, HTTPStatus.OK):
-            raise OTBRError(f"unexpected http status {response.status}")
+        await _raise_for_pending_dataset_status(response)
 
     async def delete_pending_dataset(self) -> None:
         """Delete pending operational dataset."""
@@ -430,12 +439,7 @@ class OTBR:  # pylint: disable=too-many-public-methods
             timeout=aiohttp.ClientTimeout(total=10),
         )
 
-        if response.status == HTTPStatus.CONFLICT:
-            raise ThreadNetworkActiveError
-        if response.status == HTTPStatus.PRECONDITION_FAILED:
-            raise PendingDatasetConflictError("a pending dataset is already in place")
-        if response.status not in (HTTPStatus.CREATED, HTTPStatus.OK):
-            raise OTBRError(f"unexpected http status {response.status}")
+        await _raise_for_pending_dataset_status(response)
 
     async def set_channel(
         self, channel: int, delay: int = PENDING_DATASET_DELAY_TIMER
