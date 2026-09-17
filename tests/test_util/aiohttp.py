@@ -36,6 +36,7 @@ class AiohttpClientMocker:
         self._mocks = []
         self._cookies = {}
         self.mock_calls = []
+        self.mock_timeouts = []
 
     def request(
         self,
@@ -143,6 +144,7 @@ class AiohttpClientMocker:
         for response in self._mocks:
             if response.match_request(method, url, params):
                 self.mock_calls.append((method, url, data, headers))
+                self.mock_timeouts.append(timeout)
                 if response.side_effect:
                     response = await response.side_effect(method, url, data)
                 if response.exc:

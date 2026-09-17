@@ -677,7 +677,7 @@ async def test_delete_active_dataset_202(aioclient_mock: AiohttpClientMocker):
         await otbr.delete_active_dataset()
 
 
-async def test_create_pending_dataset_thread_active(
+async def test_create_pending_dataset_rejected(
     aioclient_mock: AiohttpClientMocker,
 ):
     """Test create_pending_dataset with error."""
@@ -686,10 +686,16 @@ async def test_create_pending_dataset_thread_active(
     )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
-    aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CONFLICT)
+    aioclient_mock.put(
+        f"{BASE_URL}/node/dataset/pending",
+        status=HTTPStatus.CONFLICT,
+        json={"title": "rejected by leader", "status": 409},
+    )
 
-    with pytest.raises(python_otbr_api.ThreadNetworkActiveError):
+    with pytest.raises(python_otbr_api.PendingDatasetRejectedError) as exc_info:
         await otbr.create_pending_dataset(python_otbr_api.PendingDataSet())
+    assert exc_info.value.reason == "rejected by leader"
+    assert "rejected by leader" in str(exc_info.value)
 
 
 async def test_create_pending_dataset_202(aioclient_mock: AiohttpClientMocker):
@@ -820,7 +826,7 @@ async def test_set_pending_dataset_tlvs(aioclient_mock: AiohttpClientMocker) -> 
     assert aioclient_mock.mock_calls[-1][3]["If-None-Match"] == "*"
 
 
-async def test_set_pending_dataset_tlvs_thread_active(
+async def test_set_pending_dataset_tlvs_rejected(
     aioclient_mock: AiohttpClientMocker,
 ) -> None:
     """Test set_pending_dataset_tlvs with error."""
@@ -829,10 +835,16 @@ async def test_set_pending_dataset_tlvs_thread_active(
     )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
-    aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CONFLICT)
+    aioclient_mock.put(
+        f"{BASE_URL}/node/dataset/pending",
+        status=HTTPStatus.CONFLICT,
+        text="no longer attached",
+    )
 
-    with pytest.raises(python_otbr_api.ThreadNetworkActiveError):
+    with pytest.raises(python_otbr_api.PendingDatasetRejectedError) as exc_info:
         await otbr.set_pending_dataset_tlvs(b"")
+    # A plain body is taken as it is.
+    assert exc_info.value.reason == "no longer attached"
 
 
 async def test_set_pending_dataset_tlvs_refused_while_pending(
