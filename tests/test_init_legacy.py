@@ -689,13 +689,15 @@ async def test_create_pending_dataset_rejected(
     aioclient_mock.put(
         f"{BASE_URL}/node/dataset/pending",
         status=HTTPStatus.CONFLICT,
-        json={"title": "rejected by leader", "status": 409},
+        json={"title": "Conflict", "status": 409, "detail": "rejected by leader"},
     )
 
     with pytest.raises(python_otbr_api.PendingDatasetRejectedError) as exc_info:
         await otbr.create_pending_dataset(python_otbr_api.PendingDataSet())
+    # The reason is the detail; the title is only the HTTP status phrase.
     assert exc_info.value.reason == "rejected by leader"
     assert "rejected by leader" in str(exc_info.value)
+    assert "Conflict" not in str(exc_info.value)
 
 
 async def test_create_pending_dataset_202(aioclient_mock: AiohttpClientMocker):
@@ -838,13 +840,13 @@ async def test_set_pending_dataset_tlvs_rejected(
     aioclient_mock.put(
         f"{BASE_URL}/node/dataset/pending",
         status=HTTPStatus.CONFLICT,
-        text="no longer attached",
+        text="rejected by leader",
     )
 
     with pytest.raises(python_otbr_api.PendingDatasetRejectedError) as exc_info:
         await otbr.set_pending_dataset_tlvs(b"")
     # A plain body is taken as it is.
-    assert exc_info.value.reason == "no longer attached"
+    assert exc_info.value.reason == "rejected by leader"
 
 
 async def test_set_pending_dataset_tlvs_refused_while_pending(

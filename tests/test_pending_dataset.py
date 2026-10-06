@@ -106,8 +106,17 @@ async def test_set_pending_dataset_tlvs_client_timeout(
         await otbr.set_pending_dataset_tlvs(b"")
 
 
+@pytest.mark.parametrize(
+    ("body", "kwargs"),
+    [
+        # What the router sends when it is not attached or still busy with an
+        # earlier registration: the status phrase and nothing else.
+        ("bare JSON error", {"json": {"title": "Conflict", "status": 409}}),
+        ("empty body", {}),
+    ],
+)
 async def test_set_pending_dataset_tlvs_rejected_without_reason(
-    aioclient_mock: AiohttpClientMocker,
+    aioclient_mock: AiohttpClientMocker, body: str, kwargs: dict
 ) -> None:
     """Test a rejection the border router did not explain."""
     otbr = python_otbr_api.OTBR(
@@ -115,8 +124,41 @@ async def test_set_pending_dataset_tlvs_rejected_without_reason(
     )
 
     aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
-    aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CONFLICT)
+    aioclient_mock.put(
+        f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CONFLICT, **kwargs
+    )
 
     with pytest.raises(python_otbr_api.PendingDatasetRejectedError) as exc_info:
         await otbr.set_pending_dataset_tlvs(b"")
-    assert exc_info.value.reason == ""
+    assert exc_info.value.reason == "", body
+    assert str(exc_info.value) == "the border router rejected the pending dataset"
+
+
+@pytest.mark.parametrize(
+    "writer", ["create_pending_dataset", "set_pending_dataset_tlvs"]
+)
+async def test_pending_dataset_write_aborted(
+    aioclient_mock: AiohttpClientMocker, writer: str
+) -> None:
+    """Test a write aborted after it was sent is an unknown outcome, not refused.
+
+    The router answers 409 "no longer attached" when the exchange with the
+    leader was aborted after the dataset was sent, which the leader may
+    have accepted.
+    """
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    aioclient_mock.put(
+        f"{BASE_URL}/node/dataset/pending",
+        json={"title": "Conflict", "status": 409, "detail": "no longer attached"},
+        status=HTTPStatus.CONFLICT,
+    )
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
+
+    with pytest.raises(python_otbr_api.PendingDatasetOutcomeUnknownError):
+        if writer == "create_pending_dataset":
+            await otbr.create_pending_dataset(python_otbr_api.PendingDataSet())
+        else:
+            await otbr.set_pending_dataset_tlvs(b"")
