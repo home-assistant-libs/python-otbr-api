@@ -17,8 +17,9 @@ from .models import (
     EphemeralKeyState,
     EphemeralKeyStatus,
     PendingDataSet,
-    Timestamp,
 )
+from .models import Timestamp  # noqa: F401  # re-exported
+from .tlv_parser import TLVError, encode_tlv, parse_tlv, pending_channel_change
 
 # 5 minutes as recommended by
 # https://github.com/openthread/openthread/discussions/8567#discussioncomment-4468920
@@ -553,31 +554,21 @@ class OTBR:  # pylint: disable=too-many-public-methods
     async def set_channel(
         self, channel: int, delay: int = PENDING_DATASET_DELAY_TIMER
     ) -> None:
-        """Change the channel
+        """Change the channel with a pending dataset built from the active one.
 
-        The channel is changed by creating a new pending dataset based on the active
-        dataset. If a pending dataset is already in place, create_pending_dataset
-        refuses the write and raises PendingDatasetConflictError: stamping from the
-        active dataset alone would make the mesh silently ignore it while the router
-        accepts the write, and superseding the pending dataset would race its delay
-        timer on devices that miss the update. The other answers of
-        create_pending_dataset propagate as well: PendingDatasetRejectedError
-        means the border router refused it, and PendingDatasetOutcomeUnknownError
-        means the change may be on its way, not that it failed.
+        Built by tlv_parser.pending_channel_change and written with
+        set_pending_dataset_tlvs, whose errors propagate. Raises OTBRError for
+        an invalid channel, or a missing or malformed active dataset.
         """
         if not 11 <= channel <= 26:
             raise OTBRError(f"invalid channel {channel}")
-        if not (dataset := await self.get_active_dataset()):
+        if not (active := await self.get_active_dataset_tlvs()):
             raise OTBRError("router has no active dataset")
-
-        if dataset.active_timestamp and dataset.active_timestamp.seconds is not None:
-            dataset.active_timestamp.seconds += 1
-        else:
-            dataset.active_timestamp = Timestamp(False, 1, 0)
-        dataset.channel = channel
-        pending_dataset = PendingDataSet(active_dataset=dataset, delay=delay)
-
-        await self.create_pending_dataset(pending_dataset)
+        try:
+            pending = pending_channel_change(parse_tlv(active.hex()), channel, delay)
+        except TLVError as exc:
+            raise OTBRError(f"cannot change the channel: {exc}") from exc
+        await self.set_pending_dataset_tlvs(bytes.fromhex(encode_tlv(pending)))
 
     async def get_extended_address(self) -> bytes:
         """Get extended address (EUI-64).
