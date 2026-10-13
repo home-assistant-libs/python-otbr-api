@@ -7,6 +7,7 @@ from http import HTTPStatus
 from typing import Any
 import json
 import logging
+import re
 
 import aiohttp
 import voluptuous as vol  # type: ignore[import]
@@ -30,6 +31,10 @@ PENDING_DATASET_DELAY_TIMER = 5 * 60 * 1000
 # the leader's verdict before it answers; a client that gives up sooner can
 # never receive that verdict. A longer client timeout is honoured as it is.
 PENDING_DATASET_TIMEOUT = 40
+
+# From this REST API version the router registers pending datasets with the
+# Thread leader (ot-br-posix#3582).
+_LEADER_REGISTRATION_API_VERSION = (0, 6, 0)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -770,3 +775,16 @@ class OTBR:  # pylint: disable=too-many-public-methods
         self._api_version = api_version
         _LOGGER.debug("Detected OTBR REST API version: %s", api_version)
         return api_version
+
+    async def registers_pending_dataset_with_leader(self) -> bool:
+        """Return whether pending datasets are registered with the Thread leader.
+
+        Such a router holds no copy of a pending dataset until the leader hands
+        it back. Raises OTBRError for an API version that cannot be parsed.
+        """
+        if (version := await self.get_api_version()) is None:
+            return False
+        if not (match := re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", version)):
+            raise OTBRError(f"unexpected API version '{version}'")
+        parts = tuple(int(part or 0) for part in match.groups())
+        return parts >= _LEADER_REGISTRATION_API_VERSION
