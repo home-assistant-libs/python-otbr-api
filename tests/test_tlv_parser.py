@@ -12,6 +12,7 @@ from python_otbr_api.tlv_parser import (
     TLVError,
     encode_tlv,
     parse_tlv,
+    pending_channel_change,
 )
 
 # Shared dataset covering the newly added Meshcop TLV types.
@@ -346,3 +347,90 @@ def test_unknown_tlv_value_not_logged(caplog: pytest.LogCaptureFixture) -> None:
     parse_tlv("BD03ABCDEF")
     assert "unknown TLV type 189 (3 bytes)" in caplog.text
     assert "abcdef" not in caplog.text.lower()
+
+
+ACTIVE_DATASET = parse_tlv(
+    "0E080000000000010000000300000F35060004001FFFE0020811111111222222220708FDAD"
+    "70BFE5AA15DD051000112233445566778899AABBCCDDEEFF030E4F70656E54687265616444"
+    "656D6F010212340410445F2B5CA6F2A93A55CE570A70EFEECB0C0402A0F7F8"
+)
+CHANGED_TAGS = {
+    MeshcopTLVType.CHANNEL,
+    MeshcopTLVType.ACTIVETIMESTAMP,
+    MeshcopTLVType.PENDINGTIMESTAMP,
+    MeshcopTLVType.DELAYTIMER,
+}
+
+
+def test_channel_from_channel() -> None:
+    """A channel is encoded on channel page 0."""
+    channel = Channel.from_channel(26)
+    assert channel.data == bytes.fromhex("00001a")
+    assert channel.channel == 26
+
+
+@pytest.mark.parametrize("channel", [0, 2**16])
+def test_channel_from_channel_out_of_range(channel: int) -> None:
+    """A channel that doesn't fit the wire format is refused."""
+    with pytest.raises(TLVError):
+        Channel.from_channel(channel)
+
+
+def test_pending_channel_change() -> None:
+    """The channel moves, both timestamps go one second up, the rest stays."""
+    active = dict(ACTIVE_DATASET)
+    active[MeshcopTLVType.ACTIVETIMESTAMP] = Timestamp.from_values(
+        MeshcopTLVType.ACTIVETIMESTAMP, 7, ticks=5, authoritative=True
+    )
+    active[MeshcopTLVType.WAKEUP_CHANNEL] = MeshcopTLVItem(
+        MeshcopTLVType.WAKEUP_CHANNEL, bytes.fromhex("00000f")
+    )
+    active[0x7F] = MeshcopTLVItem(0x7F, b"\x01")
+
+    pending = pending_channel_change(active, 16, 1234)
+
+    channel = pending[MeshcopTLVType.CHANNEL]
+    assert isinstance(channel, Channel)
+    assert channel.channel == 16
+    stamp = pending[MeshcopTLVType.ACTIVETIMESTAMP]
+    assert isinstance(stamp, Timestamp)
+    assert (stamp.seconds, stamp.ticks, stamp.authoritative) == (8, 5, True)
+    pending_stamp = pending[MeshcopTLVType.PENDINGTIMESTAMP]
+    assert isinstance(pending_stamp, Timestamp)
+    assert (pending_stamp.seconds, pending_stamp.ticks) == (8, 5)
+    delay = pending[MeshcopTLVType.DELAYTIMER]
+    assert isinstance(delay, DelayTimer)
+    assert delay.delay == 1234
+    assert {k: v for k, v in pending.items() if k not in CHANGED_TAGS} == {
+        k: v for k, v in active.items() if k not in CHANGED_TAGS
+    }
+    assert parse_tlv(encode_tlv(pending)) == pending
+
+
+def test_pending_channel_change_without_timestamp() -> None:
+    """An active dataset without a timestamp is stamped from one second."""
+    active = dict(ACTIVE_DATASET)
+    del active[MeshcopTLVType.ACTIVETIMESTAMP]
+
+    pending = pending_channel_change(active, 16, 1234)
+
+    stamp = pending[MeshcopTLVType.ACTIVETIMESTAMP]
+    assert isinstance(stamp, Timestamp)
+    assert (stamp.seconds, stamp.ticks, stamp.authoritative) == (1, 0, False)
+
+
+@pytest.mark.parametrize("channel", [10, 27])
+def test_pending_channel_change_invalid_channel(channel: int) -> None:
+    """A channel outside 11 to 26 is refused."""
+    with pytest.raises(TLVError):
+        pending_channel_change(ACTIVE_DATASET, channel, 1234)
+
+
+def test_pending_channel_change_exhausted_timestamp() -> None:
+    """An active timestamp that cannot go up is refused."""
+    active = dict(ACTIVE_DATASET)
+    active[MeshcopTLVType.ACTIVETIMESTAMP] = Timestamp.from_values(
+        MeshcopTLVType.ACTIVETIMESTAMP, 2**48 - 1
+    )
+    with pytest.raises(TLVError):
+        pending_channel_change(active, 16, 1234)
