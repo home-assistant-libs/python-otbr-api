@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 import python_otbr_api
-from python_otbr_api import KeyFormat
+from python_otbr_api import KeyFormat, tlv_parser
 
 from tests.test_util.aiohttp import AiohttpClientMocker
 
@@ -37,6 +37,20 @@ DATASET_JSON: dict[str, Any] = {
         "TobleLink": True,
     },
 }
+DATASET_TLVS = bytes.fromhex(
+    "0E080000000000010000000300000F35060004001FFFE0020811111111222222220708FDAD"
+    "70BFE5AA15DD051000112233445566778899AABBCCDDEEFF030E4F70656E54687265616444"
+    "656D6F010212340410445F2B5CA6F2A93A55CE570A70EFEECB0C0402A0F7F8"
+)
+
+
+def _sent_pending(
+    aioclient_mock: AiohttpClientMocker,
+) -> dict[tlv_parser.MeshcopTLVType | int, tlv_parser.MeshcopTLVItem]:
+    """Return the pending dataset the last request wrote."""
+    method, url, data, _ = aioclient_mock.mock_calls[-1]
+    assert (method, url.path) == ("PUT", "/node/dataset/pending")
+    return tlv_parser.parse_tlv(data)
 
 
 async def test_factory_reset(aioclient_mock: AiohttpClientMocker) -> None:
@@ -377,30 +391,23 @@ async def test_set_channel(aioclient_mock: AiohttpClientMocker) -> None:
         BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
     )
 
-    aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=DATASET_JSON)
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/active", text=DATASET_TLVS.hex())
     aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
     aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CREATED)
-    new_channel = 16
-    expected_active_timestamp = DATASET_JSON["ActiveTimestamp"] | {"Seconds": 2}
-    expected_pending_dataset = {
-        "ActiveDataset": DATASET_JSON
-        | {
-            "ActiveTimestamp": expected_active_timestamp,
-            "Channel": new_channel,
-        },
-        "Delay": 1234,
-    }
 
-    assert new_channel != DATASET_JSON["Channel"]
-    await otbr.set_channel(new_channel, 1234)
+    await otbr.set_channel(16, 1234)
+
     assert aioclient_mock.call_count == 3
-    assert aioclient_mock.mock_calls[0][0] == "GET"
-    assert aioclient_mock.mock_calls[0][1].path == "/node/dataset/active"
-    assert aioclient_mock.mock_calls[1][0] == "GET"
-    assert aioclient_mock.mock_calls[1][1].path == "/node/dataset/pending"
-    assert aioclient_mock.mock_calls[2][0] == "PUT"
-    assert aioclient_mock.mock_calls[2][1].path == "/node/dataset/pending"
-    assert aioclient_mock.mock_calls[2][2] == expected_pending_dataset
+    sent = _sent_pending(aioclient_mock)
+    channel = sent[tlv_parser.MeshcopTLVType.CHANNEL]
+    assert isinstance(channel, tlv_parser.Channel)
+    assert channel.channel == 16
+    stamp = sent[tlv_parser.MeshcopTLVType.ACTIVETIMESTAMP]
+    assert isinstance(stamp, tlv_parser.Timestamp)
+    assert stamp.seconds == 2
+    delay = sent[tlv_parser.MeshcopTLVType.DELAYTIMER]
+    assert isinstance(delay, tlv_parser.DelayTimer)
+    assert delay.delay == 1234
 
 
 async def test_set_channel_default_delay(aioclient_mock: AiohttpClientMocker) -> None:
@@ -409,30 +416,15 @@ async def test_set_channel_default_delay(aioclient_mock: AiohttpClientMocker) ->
         BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
     )
 
-    aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=DATASET_JSON)
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/active", text=DATASET_TLVS.hex())
     aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
     aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CREATED)
-    new_channel = 16
-    expected_active_timestamp = DATASET_JSON["ActiveTimestamp"] | {"Seconds": 2}
-    expected_pending_dataset = {
-        "ActiveDataset": DATASET_JSON
-        | {
-            "ActiveTimestamp": expected_active_timestamp,
-            "Channel": new_channel,
-        },
-        "Delay": 300000,
-    }
 
-    assert new_channel != DATASET_JSON["Channel"]
-    await otbr.set_channel(new_channel)
-    assert aioclient_mock.call_count == 3
-    assert aioclient_mock.mock_calls[0][0] == "GET"
-    assert aioclient_mock.mock_calls[0][1].path == "/node/dataset/active"
-    assert aioclient_mock.mock_calls[1][0] == "GET"
-    assert aioclient_mock.mock_calls[1][1].path == "/node/dataset/pending"
-    assert aioclient_mock.mock_calls[2][0] == "PUT"
-    assert aioclient_mock.mock_calls[2][1].path == "/node/dataset/pending"
-    assert aioclient_mock.mock_calls[2][2] == expected_pending_dataset
+    await otbr.set_channel(16)
+
+    delay = _sent_pending(aioclient_mock)[tlv_parser.MeshcopTLVType.DELAYTIMER]
+    assert isinstance(delay, tlv_parser.DelayTimer)
+    assert delay.delay == 300000
 
 
 async def test_set_channel_no_timestamp(aioclient_mock: AiohttpClientMocker) -> None:
@@ -441,33 +433,53 @@ async def test_set_channel_no_timestamp(aioclient_mock: AiohttpClientMocker) -> 
         BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
     )
 
-    dataset_json = dict(DATASET_JSON)
-    dataset_json.pop("ActiveTimestamp")
-
-    aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=dataset_json)
+    active = tlv_parser.parse_tlv(DATASET_TLVS.hex())
+    del active[tlv_parser.MeshcopTLVType.ACTIVETIMESTAMP]
+    aioclient_mock.get(
+        f"{BASE_URL}/node/dataset/active", text=tlv_parser.encode_tlv(active)
+    )
     aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
     aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CREATED)
-    new_channel = 16
-    expected_active_timestamp = {"Authoritative": False, "Seconds": 1, "Ticks": 0}
-    expected_pending_dataset = {
-        "ActiveDataset": DATASET_JSON
-        | {
-            "ActiveTimestamp": expected_active_timestamp,
-            "Channel": new_channel,
-        },
-        "Delay": 300000,
-    }
 
-    assert new_channel != DATASET_JSON["Channel"]
-    await otbr.set_channel(new_channel)
-    assert aioclient_mock.call_count == 3
-    assert aioclient_mock.mock_calls[0][0] == "GET"
-    assert aioclient_mock.mock_calls[0][1].path == "/node/dataset/active"
-    assert aioclient_mock.mock_calls[1][0] == "GET"
-    assert aioclient_mock.mock_calls[1][1].path == "/node/dataset/pending"
-    assert aioclient_mock.mock_calls[2][0] == "PUT"
-    assert aioclient_mock.mock_calls[2][1].path == "/node/dataset/pending"
-    assert aioclient_mock.mock_calls[2][2] == expected_pending_dataset
+    await otbr.set_channel(16)
+
+    stamp = _sent_pending(aioclient_mock)[tlv_parser.MeshcopTLVType.ACTIVETIMESTAMP]
+    assert isinstance(stamp, tlv_parser.Timestamp)
+    assert stamp.seconds == 1
+
+
+async def test_set_channel_keeps_unmodelled_tlvs(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """TLVs the JSON model lacks, such as the wake-up channel, are kept."""
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    active = DATASET_TLVS + bytes.fromhex("4a0300000f")
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/active", text=active.hex())
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.NO_CONTENT)
+    aioclient_mock.put(f"{BASE_URL}/node/dataset/pending", status=HTTPStatus.CREATED)
+
+    await otbr.set_channel(16)
+
+    wakeup = _sent_pending(aioclient_mock)[tlv_parser.MeshcopTLVType.WAKEUP_CHANNEL]
+    assert wakeup.data == bytes.fromhex("00000f")
+
+
+async def test_set_channel_malformed_dataset(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """A malformed active dataset is an error, and nothing is written."""
+    otbr = python_otbr_api.OTBR(
+        BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
+    )
+
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/active", text="0e08")
+
+    with pytest.raises(python_otbr_api.OTBRError):
+        await otbr.set_channel(16)
+    assert not [call for call in aioclient_mock.mock_calls if call[0] == "PUT"]
 
 
 async def test_set_channel_invalid_channel(aioclient_mock: AiohttpClientMocker) -> None:
@@ -495,13 +507,7 @@ async def test_set_channel_no_dataset(aioclient_mock: AiohttpClientMocker) -> No
 async def test_set_channel_rejected_while_pending(
     aioclient_mock: AiohttpClientMocker,
 ) -> None:
-    """A channel change is refused while a pending dataset is in place.
-
-    Stamping from the active dataset alone would make the mesh silently ignore
-    the write, and superseding the pending dataset would race its delay timer
-    on devices that miss the update; refusing is the only honest answer. The
-    refusal comes from create_pending_dataset, so nothing is written.
-    """
+    """A channel change is refused while a pending dataset is in place."""
     otbr = python_otbr_api.OTBR(
         BASE_URL, aioclient_mock.create_session(), key_format=KeyFormat.PASCAL_CASE
     )
@@ -511,7 +517,7 @@ async def test_set_channel_rejected_while_pending(
         "0708FD17C9D59809B27A05107546326F20BCCFD946609FBAF7F39AD5030F4F70656E5468726561"
         "642D32366363010226CC0410FA7EC34EBE58DD1FD74F13F65D021C5B0C0402A0F7F8"
     )
-    aioclient_mock.get(f"{BASE_URL}/node/dataset/active", json=DATASET_JSON)
+    aioclient_mock.get(f"{BASE_URL}/node/dataset/active", text=DATASET_TLVS.hex())
     aioclient_mock.get(f"{BASE_URL}/node/dataset/pending", text=mock_response)
 
     with pytest.raises(python_otbr_api.PendingDatasetConflictError):

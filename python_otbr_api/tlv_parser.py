@@ -86,6 +86,16 @@ class Channel(MeshcopTLVItem):
         if not self.channel:
             raise TLVError(f"invalid channel '{self.channel}'")
 
+    @classmethod
+    def from_channel(cls, channel: int) -> Channel:
+        """Construct a channel on channel page 0.
+
+        Raises TLVError if the channel doesn't fit the wire format.
+        """
+        if not 0 < channel < 2**16:
+            raise TLVError(f"invalid channel '{channel}'")
+        return cls(MeshcopTLVType.CHANNEL, struct.pack("!BH", 0, channel))
+
 
 @dataclass
 class NetworkName(MeshcopTLVItem):
@@ -171,6 +181,35 @@ class DelayTimer(MeshcopTLVItem):
         if not 0 <= delay < 2**32:
             raise TLVError(f"delay timer out of range: {delay}")
         return cls(MeshcopTLVType.DELAYTIMER, struct.pack("!L", delay))
+
+
+def pending_channel_change(
+    active: dict[MeshcopTLVType | int, MeshcopTLVItem], channel: int, delay: int
+) -> dict[MeshcopTLVType | int, MeshcopTLVItem]:
+    """Return the pending dataset moving an active dataset to a channel.
+
+    The active timestamp goes up one second, or starts at one, and the pending
+    timestamp matches it; the delay is in milliseconds. Raises TLVError for a
+    channel outside 11 to 26 or a timestamp that cannot go up.
+    """
+    if not 11 <= channel <= 26:
+        raise TLVError(f"invalid channel '{channel}'")
+    stamp = active.get(MeshcopTLVType.ACTIVETIMESTAMP)
+    seconds, ticks, authoritative = (
+        (stamp.seconds + 1, stamp.ticks, stamp.authoritative)
+        if isinstance(stamp, Timestamp)
+        else (1, 0, False)
+    )
+    pending = dict(active)
+    pending[MeshcopTLVType.CHANNEL] = Channel.from_channel(channel)
+    pending[MeshcopTLVType.ACTIVETIMESTAMP] = Timestamp.from_values(
+        MeshcopTLVType.ACTIVETIMESTAMP, seconds, ticks, authoritative
+    )
+    pending[MeshcopTLVType.PENDINGTIMESTAMP] = Timestamp.from_values(
+        MeshcopTLVType.PENDINGTIMESTAMP, seconds, ticks
+    )
+    pending[MeshcopTLVType.DELAYTIMER] = DelayTimer.from_milliseconds(delay)
+    return pending
 
 
 def _encode_item(item: MeshcopTLVItem) -> bytes:
