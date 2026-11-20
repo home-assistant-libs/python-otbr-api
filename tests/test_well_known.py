@@ -106,3 +106,48 @@ async def test_get_api_version_not_supported_runs_once(
     assert await otbr.get_api_version() is None
 
     assert aioclient_mock.call_count == 1
+
+
+@pytest.mark.parametrize(
+    ("version", "expected"),
+    [
+        ("0.5.9", False),
+        ("0.6.0", True),
+        ("0.6", True),
+        ("0.10.1", True),
+        ("1.0.0-rc1", True),
+    ],
+)
+async def test_registers_pending_dataset_with_leader(
+    aioclient_mock: AiohttpClientMocker, version: str, expected: bool
+) -> None:
+    """Routers register pending datasets with the leader from API 0.6.0."""
+    aioclient_mock.get(
+        f"{BASE_URL}/.well-known/thread/br-rest",
+        json=WELL_KNOWN_JSON | {"api": {"version": version, "base": "/api/"}},
+    )
+    otbr = _otbr(aioclient_mock)
+    assert await otbr.registers_pending_dataset_with_leader() is expected
+
+
+async def test_registers_pending_dataset_with_leader_without_api_version(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """A router without the discovery endpoint writes pending datasets itself."""
+    aioclient_mock.get(
+        f"{BASE_URL}/.well-known/thread/br-rest", status=HTTPStatus.NOT_FOUND
+    )
+    otbr = _otbr(aioclient_mock)
+    assert await otbr.registers_pending_dataset_with_leader() is False
+
+
+async def test_registers_pending_dataset_with_leader_unparsable_version(
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """An API version that cannot be parsed is an error."""
+    aioclient_mock.get(
+        f"{BASE_URL}/.well-known/thread/br-rest",
+        json=WELL_KNOWN_JSON | {"api": {"version": "unknown", "base": "/api/"}},
+    )
+    with pytest.raises(python_otbr_api.OTBRError):
+        await _otbr(aioclient_mock).registers_pending_dataset_with_leader()
